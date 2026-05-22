@@ -24,3 +24,9 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+#sims
+/sims/queue_time.csv
+/sims/mission_time.csv
+/sims/flight_time.csv
+/sims/drop_probability.csv
