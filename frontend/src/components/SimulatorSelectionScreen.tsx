@@ -1,30 +1,33 @@
 import { ArrowRight } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 interface SimulatorCard {
     title: string
     description: string
     page?: string
+    route: string
 }
-const SimulatorSelectionScreen = ({ onSelect }: { onSelect?: (page?: string) => void }) => {
+const SimulatorSelectionScreen = () => {
     const simulators: SimulatorCard[] = [
         {
             title: 'Drone Delivery Sim',
             description:
                 'A straightforward drone delivery simulator where drones transport packages between designated points. Perfect for learning the basics of autonomous delivery systems.',
             page: 'DroneDeliveryConfig.tsx',
+            route: '/simuladores/drone-delivery/configuracao',
         },
         {
             title: 'Shared Drone Delivery Sim',
             description:
                 'An advanced simulator featuring shared drones across multiple warehouses. Optimize delivery routes and resource allocation in a complex logistics network.',
             page: 'SharedDroneConfig.tsx',
+            route: '/simuladores/shared-drone-delivery/configuracao',
         },
 
     ]
 
     const handleSimulatorClick = (simulator: SimulatorCard) => {
         console.log(`Selected simulator: ${simulator.title}`)
-        if (onSelect) onSelect(simulator.page)
     }
 
     return (
@@ -45,18 +48,12 @@ const SimulatorSelectionScreen = ({ onSelect }: { onSelect?: (page?: string) => 
 
                 {/* Cards Container */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {simulators.map((simulator, index) => (
-                        <div
-                            key={index}
+                    {simulators.map((simulator) => (
+                        <Link
+                            key={simulator.route}
+                            to={simulator.route}
                             onClick={() => handleSimulatorClick(simulator)}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    handleSimulatorClick(simulator)
-                                }
-                            }}
-                            role="button"
-                            tabIndex={0}
-                            className="group cursor-pointer"
+                            className="group cursor-pointer block"
                         >
                             <div
                                 className="h-full p-8 rounded-lg border-2 transition-all duration-300"
@@ -110,7 +107,7 @@ const SimulatorSelectionScreen = ({ onSelect }: { onSelect?: (page?: string) => 
                                     />
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </div>

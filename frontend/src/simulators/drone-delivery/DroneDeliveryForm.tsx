@@ -28,7 +28,6 @@ export default function DroneDeliveryForm() {
         handleSubmit,
         watch,
         setValue,
-        formState: { errors },
     } = useForm<DroneConfigForm>({
         resolver: zodResolver(DroneConfigSchema),
         shouldUnregister: true,
