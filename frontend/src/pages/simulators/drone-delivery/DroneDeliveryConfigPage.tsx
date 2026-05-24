@@ -43,7 +43,7 @@ export default function DroneDeliveryConfigPage() {
         handleSubmit,
         control,
         setValue,
-        formState: { errors },
+        formState: { errors, isSubmitting },
     } = useForm<DroneDeliveryFormValues>({
         resolver: zodResolver(DroneDeliverySchema),
         shouldUnregister: true,
@@ -76,7 +76,7 @@ export default function DroneDeliveryConfigPage() {
         setValue('drones', current.slice(0, droneCount))
     }, [droneCount, drones, setValue])
 
-    const onSubmit = (data: DroneDeliveryFormValues) => {
+    const onSubmit = async (data: DroneDeliveryFormValues) => {
         const final = [
             `drones=${data.drones.join(',')},`,
             `ar.min=${formatNumberPreserveDecimal(data.arMin)}`,
@@ -87,6 +87,8 @@ export default function DroneDeliveryConfigPage() {
             `simulationNumber=${data.simulationNumber}`,
         ].join('\n')
 
+        // TODO: enviar para o backend quando a rota estiver disponível
+        // await axios.post(`${API_URL}/execucoes`, { simulator: 'drone-delivery', propertiesContent: final })
         console.log(final)
     }
 
@@ -228,13 +230,22 @@ export default function DroneDeliveryConfigPage() {
 
                         <button
                             type="submit"
-                            className="px-4 py-2 rounded-md"
+                            disabled={isSubmitting}
+                            className="flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-opacity"
                             style={{
                                 backgroundColor: 'var(--color-cyan-primary)',
                                 color: 'var(--color-background)',
+                                opacity: isSubmitting ? 0.7 : 1,
+                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
                             }}
                         >
-                            Gerar Properties
+                            {isSubmitting && (
+                                <span
+                                    className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin"
+                                    style={{ borderColor: 'var(--color-background)', borderTopColor: 'transparent' }}
+                                />
+                            )}
+                            {isSubmitting ? 'Enviando...' : 'Gerar Properties'}
                         </button>
 
                         <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>

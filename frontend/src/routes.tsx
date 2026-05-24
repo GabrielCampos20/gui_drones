@@ -9,6 +9,7 @@ import DroneDeliveryConfigPage from './pages/simulators/drone-delivery/DroneDeli
 import SharedDroneConfigPage from './pages/simulators/shared-drone-delivery/SharedDroneConfigPage'
 import HistoryPage from './pages/history/HistoryPage'
 import SimulationStatusPage from './pages/simulators/SimulationStatusPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuth()
@@ -81,7 +82,7 @@ export default function AppRoutes() {
                     }
                 />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </BrowserRouter>
     )

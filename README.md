@@ -118,12 +118,13 @@ gui_drones/
 │       │   │   └── HomePage.tsx         # Seleção de simulador
 │       │   ├── history/
 │       │   │   └── HistoryPage.tsx      # Histórico de execuções com tabela e status
-│       │   └── simulators/
-│       │       ├── SimulationStatusPage.tsx          # Feedback de execução com polling
-│       │       ├── drone-delivery/
-│       │       │   └── DroneDeliveryConfigPage.tsx   # Formulário Drone Delivery
-│       │       └── shared-drone-delivery/
-│       │           └── SharedDroneConfigPage.tsx     # Formulário Shared Drone (em desenvolvimento)
+│       │   ├── simulators/
+│       │   │   ├── SimulationStatusPage.tsx          # Feedback de execução com polling
+│       │   │   ├── drone-delivery/
+│       │   │   │   └── DroneDeliveryConfigPage.tsx   # Formulário Drone Delivery
+│       │   │   └── shared-drone-delivery/
+│       │   │       └── SharedDroneConfigPage.tsx     # Formulário Shared Drone (em desenvolvimento)
+│       │   └── NotFoundPage.tsx             # Página 404 customizada
 │       ├── services/
 │       │   └── executions.ts            # Serviço de API para execuções (axios)
 │       ├── App.tsx                      # Raiz da aplicação (AuthProvider + Toaster)
@@ -339,18 +340,19 @@ python start.py
 
 | Passo | Ação |
 |---|---|
-| 1 | Sobe o container do PostgreSQL (`docker-compose up -d db`) |
-| 2 | Aguarda o banco ficar pronto (`pg_isready`) |
-| 3 | Executa `prisma generate` |
-| 4 | Executa `prisma migrate deploy` (aplica migrações pendentes) |
-| 5 | Inicia o backend em background (porta 3000) |
-| 6 | Inicia o frontend em background (porta 5173) |
+| 1 | Verifica dependências (`docker-compose`, `npm`, `npx`) |
+| 2 | Sobe o container do PostgreSQL (`docker-compose up -d db`) |
+| 3 | Aguarda o banco ficar pronto (`pg_isready`) |
+| 4 | Executa `prisma generate` |
+| 5 | Executa `prisma migrate deploy` (aplica migrações pendentes) |
+| 6 | Inicia o backend em background (porta 3000) |
+| 7 | Inicia o frontend em background (porta 5173) |
 
 O output de cada serviço aparece prefixado e colorido no mesmo terminal:
 - `[BACKEND]` → azul
 - `[FRONTEND]` → magenta
 
-Pressione **Ctrl+C** para encerrar todos os serviços de uma vez.
+Pressione **Ctrl+C** para encerrar todos os serviços de uma vez (sem prompts no Windows).
 
 ---
 
@@ -415,6 +417,7 @@ npm run dev
 | `/simuladores/shared-drone-delivery/configuracao` | Protegido | Configuração do Shared Drone Sim |
 | `/historico` | Protegido | Histórico de execuções |
 | `/simuladores/execucao/:id` | Protegido | Status e resultados de uma execução |
+| `*` (qualquer outra) | Público | Página 404 customizada |
 
 ---
 

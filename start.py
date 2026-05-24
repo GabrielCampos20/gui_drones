@@ -77,18 +77,17 @@ def cleanup(sig=None, frame=None):
     for proc in running_procs:
         try:
             if IS_WINDOWS:
-                # No Windows, terminate() não propaga para processos filhos
-                subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                    capture_output=True,
-                )
+                # Envia CTRL_BREAK ao grupo de processos — encerra sem prompt de batch
+                os.kill(proc.pid, signal.CTRL_BREAK_EVENT)  # type: ignore[attr-defined]
             else:
                 os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         except Exception:
-            try:
-                proc.terminate()
-            except Exception:
-                pass
+            pass
+        # Aguarda até 1s para encerrar graciosamente, depois força
+        try:
+            proc.wait(timeout=1)
+        except Exception:
+            proc.kill()
     sys.exit(0)
 
 signal.signal(signal.SIGINT, cleanup)
@@ -144,8 +143,11 @@ def start_service(label: str, color: str, cmd: list[str], cwd: str) -> subproces
         bufsize=1,
     )
 
-    # No Linux, cria um process group próprio para killpg funcionar
-    if not IS_WINDOWS:
+    if IS_WINDOWS:
+        # CREATE_NEW_PROCESS_GROUP permite enviar CTRL_BREAK_EVENT sem prompt de batch
+        kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    else:
+        # No Linux, cria um process group próprio para killpg funcionar
         kwargs["start_new_session"] = True
 
     proc = subprocess.Popen(cmd, **kwargs)
