@@ -9,6 +9,7 @@ build/
 .env
 .env.local
 .env.*.local
+*.env
 
 # Docker
 .docker/
@@ -24,3 +25,6 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+# sims_csvs
+/sims/**/*.csv
