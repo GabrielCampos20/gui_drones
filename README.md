@@ -104,10 +104,10 @@ gui_drones/
 ├── frontend/
 │   └── src/
 │       ├── contexts/
-│       │   └── AuthContext.tsx          # Estado global de autenticação
+│       │   └── AuthContext.tsx          # Estado global de autenticação (sessão em memória)
 │       ├── components/
 │       │   └── ui/
-│       │       ├── PageShell.tsx        # Layout base + header com usuário logado
+│       │       ├── PageShell.tsx        # Layout base + header com usuário logado e nav
 │       │       ├── SimulatorCard.tsx    # Card de seleção de simulador
 │       │       └── PrivateRoute.tsx     # Guard de rotas protegidas
 │       ├── pages/
@@ -116,15 +116,21 @@ gui_drones/
 │       │   │   └── RegisterPage.tsx     # Tela de cadastro
 │       │   ├── home/
 │       │   │   └── HomePage.tsx         # Seleção de simulador
+│       │   ├── history/
+│       │   │   └── HistoryPage.tsx      # Histórico de execuções com tabela e status
 │       │   └── simulators/
+│       │       ├── SimulationStatusPage.tsx          # Feedback de execução com polling
 │       │       ├── drone-delivery/
 │       │       │   └── DroneDeliveryConfigPage.tsx   # Formulário Drone Delivery
 │       │       └── shared-drone-delivery/
 │       │           └── SharedDroneConfigPage.tsx     # Formulário Shared Drone (em desenvolvimento)
+│       ├── services/
+│       │   └── executions.ts            # Serviço de API para execuções (axios)
 │       ├── App.tsx                      # Raiz da aplicação (AuthProvider + Toaster)
 │       ├── routes.tsx                   # Definição de rotas (públicas e protegidas)
 │       ├── main.tsx                     # Entry point React
-│       └── index.css                    # Tokens de design (CSS custom properties)
+│       ├── index.css                    # Tokens de design (CSS custom properties)
+│       └── .env.example                 # Exemplo de variáveis de ambiente
 │
 ├── backend/
 │   ├── src/
@@ -394,7 +400,7 @@ npm run dev
 | `GET` | `/` | `{ status: "ok" }` |
 | `GET` | `/health` | `{ status: "healthy" }` |
 
-> ⚠️ As rotas de simulação (executar `.jar`, consultar execuções) estão em desenvolvimento.
+> ⚠️ As rotas de simulação (`POST /execucoes`, `GET /execucoes`, `GET /execucoes/:id`) estão em desenvolvimento pelo backend.
 
 ---
 
@@ -407,6 +413,8 @@ npm run dev
 | `/` | Protegido | Home — seleção de simulador |
 | `/simuladores/drone-delivery/configuracao` | Protegido | Configuração do Drone Delivery Sim |
 | `/simuladores/shared-drone-delivery/configuracao` | Protegido | Configuração do Shared Drone Sim |
+| `/historico` | Protegido | Histórico de execuções |
+| `/simuladores/execucao/:id` | Protegido | Status e resultados de uma execução |
 
 ---
 

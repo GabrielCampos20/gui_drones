@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { LogOut, User } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { LogOut, User, History } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
 
@@ -50,6 +50,27 @@ export default function PageShell({ title, description, children }: PageShellPro
                 {/* Usuário logado + logout */}
                 {user && (
                     <div className="flex items-center gap-3">
+                        {/* Link para histórico */}
+                        <Link
+                            to="/historico"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors"
+                            style={{
+                                backgroundColor: 'transparent',
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-muted)',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-cyan-primary)'
+                                e.currentTarget.style.color = 'var(--color-cyan-light)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)'
+                                e.currentTarget.style.color = 'var(--color-text-muted)'
+                            }}
+                        >
+                            <History size={14} />
+                            <span>Histórico</span>
+                        </Link>
                         <div
                             className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
                             style={{

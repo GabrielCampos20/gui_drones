@@ -7,6 +7,8 @@ import RegisterPage from './pages/auth/RegisterPage'
 import HomePage from './pages/home/HomePage'
 import DroneDeliveryConfigPage from './pages/simulators/drone-delivery/DroneDeliveryConfigPage'
 import SharedDroneConfigPage from './pages/simulators/shared-drone-delivery/SharedDroneConfigPage'
+import HistoryPage from './pages/history/HistoryPage'
+import SimulationStatusPage from './pages/simulators/SimulationStatusPage'
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
     const { isAuthenticated, isLoading } = useAuth()
@@ -58,6 +60,23 @@ export default function AppRoutes() {
                     element={
                         <PrivateRoute>
                             <SharedDroneConfigPage />
+                        </PrivateRoute>
+                    }
+                />
+
+                <Route
+                    path="/historico"
+                    element={
+                        <PrivateRoute>
+                            <HistoryPage />
+                        </PrivateRoute>
+                    }
+                />
+                <Route
+                    path="/simuladores/execucao/:id"
+                    element={
+                        <PrivateRoute>
+                            <SimulationStatusPage />
                         </PrivateRoute>
                     }
                 />

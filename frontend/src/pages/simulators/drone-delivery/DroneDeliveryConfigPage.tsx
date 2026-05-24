@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import * as z from 'zod'
 import PageShell from '../../../components/ui/PageShell'
 
@@ -204,6 +206,26 @@ export default function DroneDeliveryConfigPage() {
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                        <Link
+                            to="/"
+                            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors"
+                            style={{
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-muted)',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-text-secondary)'
+                                e.currentTarget.style.color = 'var(--color-text-secondary)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)'
+                                e.currentTarget.style.color = 'var(--color-text-muted)'
+                            }}
+                        >
+                            <ArrowLeft size={14} />
+                            Voltar
+                        </Link>
+
                         <button
                             type="submit"
                             className="px-4 py-2 rounded-md"
