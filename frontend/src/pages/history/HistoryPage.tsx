@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, PlayCircle, CheckCircle, RefreshCw, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Clock, PlayCircle, CheckCircle, RefreshCw, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
+import Modal from '../../components/ui/Modal'
 import {
     executionsApi,
     simulatorLabel,
@@ -101,6 +102,11 @@ export default function HistoryPage() {
     const [executions, setExecutions] = useState<Execution[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isOffline, setIsOffline] = useState(false)
+    
+    // Modal states
+    const [isClearing, setIsClearing] = useState(false)
+    const [isClearModalOpen, setIsClearModalOpen] = useState(false)
+    const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
 
     async function load() {
         setIsLoading(true)
@@ -112,6 +118,25 @@ export default function HistoryPage() {
             setIsOffline(true)
         } finally {
             setIsLoading(false)
+        }
+    }
+
+    function confirmClearAll() {
+        setIsClearModalOpen(true)
+    }
+
+    async function executeClearAll() {
+        setIsClearing(true)
+        try {
+            await executionsApi.clearAll()
+            await load()
+            setIsClearModalOpen(false)
+        } catch (error) {
+            console.error('Erro ao limpar histórico:', error)
+            setIsClearModalOpen(false)
+            setIsErrorModalOpen(true)
+        } finally {
+            setIsClearing(false)
         }
     }
 
@@ -139,6 +164,35 @@ export default function HistoryPage() {
                     <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                         {!isLoading && !isOffline && `${executions.length} execução(ões) encontrada(s)`}
                     </p>
+                    
+                    {!isLoading && !isOffline && executions.length > 0 && (
+                        <button
+                            onClick={confirmClearAll}
+                            disabled={isClearing || isLoading}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors"
+                            style={{
+                                borderColor: '#ef4444',
+                                color: '#ef4444',
+                                backgroundColor: 'transparent',
+                                cursor: (isClearing || isLoading) ? 'not-allowed' : 'pointer',
+                                opacity: (isClearing || isLoading) ? 0.5 : 1,
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isClearing && !isLoading) {
+                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isClearing && !isLoading) {
+                                    e.currentTarget.style.backgroundColor = 'transparent'
+                                }
+                            }}
+                        >
+                            <Trash2 size={13} />
+                            {isClearing ? 'Limpando...' : 'Limpar'}
+                        </button>
+                    )}
+
                     <button
                         onClick={load}
                         disabled={isLoading}
@@ -256,6 +310,29 @@ export default function HistoryPage() {
                     ))}
                 </div>
             )}
+
+            {/* Modal de Limpar Histórico */}
+            <Modal
+                isOpen={isClearModalOpen}
+                title="Limpar Histórico"
+                description="Tem certeza que deseja excluir todo o histórico de execuções? Esta ação não pode ser desfeita e todas as simulações e arquivos relacionados serão perdidos."
+                variant="danger"
+                confirmText="Sim, excluir tudo"
+                cancelText="Não, cancelar"
+                onConfirm={executeClearAll}
+                onCancel={() => setIsClearModalOpen(false)}
+                isLoading={isClearing}
+            />
+
+            {/* Modal de Erro */}
+            <Modal
+                isOpen={isErrorModalOpen}
+                title="Erro ao limpar"
+                description="Não foi possível se comunicar com o banco de dados para limpar o histórico. Verifique a conexão do servidor."
+                variant="info"
+                confirmText="OK"
+                onConfirm={() => setIsErrorModalOpen(false)}
+            />
         </PageShell>
     )
 }

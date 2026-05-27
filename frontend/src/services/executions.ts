@@ -22,6 +22,12 @@ export const executionsApi = {
 
     getById: (id: string) =>
         axios.get<Execution>(`${API_URL}/execucoes/${id}`),
+
+    stop: (id: string) =>
+        axios.post<{ message: string }>(`${API_URL}/execucoes/${id}/stop`),
+
+    clearAll: () =>
+        axios.delete(`${API_URL}/execucoes`),
 }
 
 export function simulatorLabel(simulator: string): string {

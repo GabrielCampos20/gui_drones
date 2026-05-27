@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { CheckCircle, AlertCircle, FileText, ArrowLeft, Clock } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
+import Modal from '../../components/ui/Modal'
 import {
     executionsApi,
     simulatorLabel,
@@ -66,6 +67,8 @@ export default function SimulationStatusPage() {
     const [execution, setExecution] = useState<Execution | null>(null)
     const [error, setError] = useState<string | null>(null)
     const [elapsed, setElapsed] = useState(0)
+    const [isStopping, setIsStopping] = useState(false)
+    const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -104,6 +107,18 @@ export default function SimulationStatusPage() {
             if (intervalRef.current) clearInterval(intervalRef.current)
         }
     }, [id])
+
+    const handleStop = async () => {
+        if (!id) return
+        setIsStopping(true)
+        try {
+            await executionsApi.stop(id)
+        } catch (error) {
+            console.error('Erro ao parar simulação:', error)
+            setIsErrorModalOpen(true)
+            setIsStopping(false)
+        }
+    }
 
     const isDone = !!execution?.finishedAt
     const isError = !isDone && elapsed > 300 // mais de 5 min sem resposta
@@ -257,7 +272,7 @@ export default function SimulationStatusPage() {
                         Ver histórico
                     </Link>
 
-                    {isDone && (
+                    {isDone ? (
                         <Link
                             to="/"
                             className="px-4 py-2 rounded-lg text-sm font-medium"
@@ -268,9 +283,43 @@ export default function SimulationStatusPage() {
                         >
                             Nova simulação
                         </Link>
+                    ) : (
+                        <button
+                            onClick={handleStop}
+                            disabled={isStopping}
+                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                border: '1px solid #ef4444',
+                                color: '#ef4444',
+                                opacity: isStopping ? 0.7 : 1,
+                                cursor: isStopping ? 'not-allowed' : 'pointer',
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isStopping) {
+                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isStopping) {
+                                    e.currentTarget.style.backgroundColor = 'transparent'
+                                }
+                            }}
+                        >
+                            {isStopping ? 'Parando...' : 'Parar Simulação'}
+                        </button>
                     )}
                 </div>
             </div>
+
+            {/* Modal de Erro */}
+            <Modal
+                isOpen={isErrorModalOpen}
+                title="Erro ao cancelar"
+                description="Não foi possível se comunicar com o banco de dados para parar a simulação. Verifique a conexão do servidor."
+                variant="info"
+                confirmText="OK"
+                onConfirm={() => setIsErrorModalOpen(false)}
+            />
         </PageShell>
     )
 }

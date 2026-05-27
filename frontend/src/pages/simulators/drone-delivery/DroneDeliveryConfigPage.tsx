@@ -1,20 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import * as z from 'zod'
+import axios from 'axios'
 import PageShell from '../../../components/ui/PageShell'
+import Modal from '../../../components/ui/Modal'
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 const DroneDeliverySchema = z.object({
-    droneCount: z.number().int().min(1),
-    drones: z.array(z.number().int().min(0)),
+    droneCount: z.number().int().positive(),
+    drones: z.array(z.number().int().positive()),
     arMin: z.number().positive(),
     arMax: z.number().positive(),
-    xPointQuantity: z.number().int().min(1),
-    maxQueueSize: z.number().int().min(1),
-    totalPackages: z.number().int().min(1),
-    simulationNumber: z.number().int().min(1),
+    xPointQuantity: z.number().int().positive(),
+    maxQueueSize: z.number().int().positive(),
+    totalPackages: z.number().int().positive(),
+    simulationNumber: z.number().int().positive(),
+}).refine(data => data.arMax > data.arMin, {
+    message: "ar.max deve ser obrigatoriamente maior que ar.min",
+    path: ["arMax"],
 })
 
 type DroneDeliveryFormValues = z.infer<typeof DroneDeliverySchema>
@@ -38,6 +45,9 @@ const floatFieldOptions = (fallback: number) => ({
 const formatNumberPreserveDecimal = (value: number) => (Number.isInteger(value) ? `${value}.0` : String(value))
 
 export default function DroneDeliveryConfigPage() {
+    const navigate = useNavigate()
+    const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
+
     const {
         register,
         handleSubmit,
@@ -69,7 +79,7 @@ export default function DroneDeliveryConfigPage() {
         if (current.length === droneCount) return
 
         if (current.length < droneCount) {
-            setValue('drones', current.concat(Array(droneCount - current.length).fill(0)))
+            setValue('drones', current.concat(Array(droneCount - current.length).fill(100))) // fill 100 instead of 0 to avoid validation errors
             return
         }
 
@@ -78,7 +88,7 @@ export default function DroneDeliveryConfigPage() {
 
     const onSubmit = async (data: DroneDeliveryFormValues) => {
         const final = [
-            `drones=${data.drones.join(',')},`,
+            `drones=${data.drones.join(',')}`,
             `ar.min=${formatNumberPreserveDecimal(data.arMin)}`,
             `ar.max=${formatNumberPreserveDecimal(data.arMax)}`,
             `xPointQuantity=${data.xPointQuantity}`,
@@ -87,9 +97,16 @@ export default function DroneDeliveryConfigPage() {
             `simulationNumber=${data.simulationNumber}`,
         ].join('\n')
 
-        // TODO: enviar para o backend quando a rota estiver disponível
-        // await axios.post(`${API_URL}/execucoes`, { simulator: 'drone-delivery', propertiesContent: final })
-        console.log(final)
+        try {
+            const response = await axios.post(`${API_URL}/execucoes`, { 
+                simulator: 'drone-delivery', 
+                propertiesContent: final 
+            })
+            navigate(`/simuladores/execucao/${response.data.id}`)
+        } catch (error) {
+            console.error('Erro ao iniciar a simulação:', error)
+            setIsErrorModalOpen(true)
+        }
     }
 
     return (
@@ -199,13 +216,31 @@ export default function DroneDeliveryConfigPage() {
                                     </label>
                                     <input
                                         type="number"
-                                        {...register(`drones.${index}`, intFieldOptions(0))}
+                                        {...register(`drones.${index}`, intFieldOptions(1))}
                                         className="w-full flex-1 rounded-md px-3 py-2 bg-(--color-surface) border border-(--color-border) focus:outline-none focus:border-(--color-cyan-primary)"
                                     />
                                 </div>
                             ))}
                         </div>
                     </div>
+
+                    {Object.keys(errors).length > 0 && (
+                        <div className="p-4 rounded-md border" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: '#ef4444' }}>
+                            <p className="text-sm font-semibold mb-2" style={{ color: '#ef4444' }}>
+                                Corrija os erros abaixo antes de iniciar:
+                            </p>
+                            <ul className="list-disc pl-5 text-sm" style={{ color: '#ef4444' }}>
+                                {errors.droneCount && <li>Qtd de Drones: {errors.droneCount.message || 'Valor inválido'}</li>}
+                                {errors.arMin && <li>ar.min: {errors.arMin.message || 'Valor inválido'}</li>}
+                                {errors.arMax && <li>ar.max: {errors.arMax.message || 'Valor inválido'}</li>}
+                                {errors.xPointQuantity && <li>xPointQuantity: {errors.xPointQuantity.message || 'Valor inválido'}</li>}
+                                {errors.maxQueueSize && <li>maxQueueSize: {errors.maxQueueSize.message || 'Valor inválido'}</li>}
+                                {errors.totalPackages && <li>totalPackages: {errors.totalPackages.message || 'Valor inválido'}</li>}
+                                {errors.simulationNumber && <li>simulationNumber: {errors.simulationNumber.message || 'Valor inválido'}</li>}
+                                {errors.drones && <li>Configurações de Drones: Contém valores inválidos (devem ser maiores que 0).</li>}
+                            </ul>
+                        </div>
+                    )}
 
                     <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                         <Link
@@ -245,15 +280,21 @@ export default function DroneDeliveryConfigPage() {
                                     style={{ borderColor: 'var(--color-background)', borderTopColor: 'transparent' }}
                                 />
                             )}
-                            {isSubmitting ? 'Enviando...' : 'Gerar Properties'}
+                            {isSubmitting ? 'Iniciando...' : 'Iniciar Simulação'}
                         </button>
-
-                        <div className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            Campos obrigatórios — verifique os valores antes de gerar.
-                        </div>
                     </div>
                 </form>
             </div>
+
+            {/* Modal de Erro */}
+            <Modal
+                isOpen={isErrorModalOpen}
+                title="Erro ao iniciar"
+                description="Falha ao iniciar a simulação. Verifique a conexão com o servidor e tente novamente."
+                variant="info"
+                confirmText="OK"
+                onConfirm={() => setIsErrorModalOpen(false)}
+            />
         </PageShell>
     )
 }
