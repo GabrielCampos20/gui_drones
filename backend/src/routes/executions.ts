@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { prisma } from '../lib/prisma'
 import { spawn, type ChildProcess } from 'child_process'
+import { EventEmitter } from 'events'
 import path from 'path'
 import fs from 'fs'
 
@@ -10,9 +11,76 @@ export let isSimulationRunning = false
 export let droppedPackages: number[] = []
 export let currentProcess: ChildProcess | null = null
 
+// ─── SSE event bus ────────────────────────────────────────────────────────────
+// Fans out simulation events to all connected SSE clients
+const simEventBus = new EventEmitter()
+simEventBus.setMaxListeners(50)
+
+function broadcastEvent(type: string, payload: Record<string, unknown>) {
+    simEventBus.emit('event', JSON.stringify({ type, payload }))
+}
+
+// ─── Regex helpers ────────────────────────────────────────────────────────────
+
+// Matches: [430.00] Drone 55 completed package 0 (queue 5.70 ms + flight 206.98 ms = mission 212.68 ms)
+const COMPLETE_RE = /\[(\d+(?:\.\d+)?)\]\s+Drone\s+(\d+)\s+completed\s+package\s+(\d+)\s+\(queue\s+[\d.]+\s+ms\s+\+\s+flight\s+([\d.]+)\s+ms/
+
+// Matches: Package 656 has been dropped.
+const DROP_RE = /Package\s+(\d+)\s+has\s+been\s+dropped\./
+
+function parseStdoutLine(line: string) {
+    const m = line.match(COMPLETE_RE)
+    if (!m) return
+    const arriveTime = parseFloat(m[1])
+    const droneId = parseInt(m[2], 10)
+    const packageId = parseInt(m[3], 10)
+    const flightTime = parseFloat(m[4])
+    const departTime = arriveTime - flightTime
+
+    broadcastEvent('drone_depart', { droneId, packageId, departTime, flightTime })
+    broadcastEvent('drone_arrive', { droneId, packageId, arriveTime })
+}
+
+function parseStderrLine(line: string) {
+    const m = line.match(DROP_RE)
+    if (m) {
+        const packageId = parseInt(m[1], 10)
+        droppedPackages.push(packageId)
+        broadcastEvent('package_drop', { packageId })
+    }
+}
+
 // ─── GET /execucoes/status ───────────────────────────────────────────────────
 router.get('/status', (req: Request, res: Response) => {
     res.json({ isRunning: isSimulationRunning })
+})
+
+// ─── GET /execucoes/stream ────────────────────────────────────────────────────
+// Server-Sent Events endpoint: streams drone events to the frontend in real-time
+router.get('/stream', (req: Request, res: Response) => {
+    res.setHeader('Content-Type', 'text/event-stream')
+    res.setHeader('Cache-Control', 'no-cache')
+    res.setHeader('Connection', 'keep-alive')
+    res.setHeader('X-Accel-Buffering', 'no') // Disable nginx buffering if used
+    res.flushHeaders()
+
+    // Send a heartbeat immediately so the connection is confirmed
+    res.write('data: {"type":"connected"}\n\n')
+
+    // If no simulation is running, send that info
+    if (!isSimulationRunning) {
+        res.write('data: {"type":"idle"}\n\n')
+    }
+
+    const onEvent = (data: string) => {
+        res.write(`data: ${data}\n\n`)
+    }
+
+    simEventBus.on('event', onEvent)
+
+    req.on('close', () => {
+        simEventBus.off('event', onEvent)
+    })
 })
 
 // ─── GET /execucoes/dropped-packages ─────────────────────────────────────────
@@ -56,7 +124,6 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
             return
         }
 
-        // Mata o processo enviando um sinal de terminal
         currentProcess.kill('SIGTERM')
         res.json({ message: 'Simulação abortada com sucesso.' })
     } catch (error) {
@@ -99,37 +166,43 @@ router.post('/', async (req: Request, res: Response) => {
         // 3. Responder imediatamente ao front-end
         res.status(201).json(execution)
 
+        // Notify SSE clients that simulation started
+        broadcastEvent('simulation_start', { executionId: execution.id })
+
         // 4. Iniciar processamento em background
         const jarPath = path.join(simsDir, 'DroneDeliverySim.jar')
         const child = spawn('java', ['-jar', jarPath], { cwd: simsDir })
         
         currentProcess = child
 
-        let stdoutData = ''
-        let stderrData = ''
+        let stdoutBuffer = ''
+        let stderrBuffer = ''
 
         child.stdout.on('data', (data) => {
-            stdoutData += data.toString()
+            const chunk = data.toString()
+            stdoutBuffer += chunk
+            const lines = stdoutBuffer.split('\n')
+            stdoutBuffer = lines.pop() ?? '' // keep the incomplete tail in the buffer
+            for (const line of lines) {
+                parseStdoutLine(line)
+            }
         })
 
         child.stderr.on('data', (data) => {
             const chunk = data.toString()
-            stderrData += chunk
-
-            const lines = chunk.split('\n')
+            stderrBuffer += chunk
+            const lines = stderrBuffer.split('\n')
+            stderrBuffer = lines.pop() ?? ''
             for (const line of lines) {
-                const match = line.match(/Package (\d+) has been dropped\./)
-                if (match) {
-                    droppedPackages.push(parseInt(match[1], 10))
-                }
+                parseStderrLine(line)
             }
         })
 
         child.on('close', async () => {
             isSimulationRunning = false
             currentProcess = null
+            broadcastEvent('simulation_end', {})
             try {
-                // Aqui podemos salvar os arquivos, ou por enquanto apenas dar um finishedAt
                 await prisma.execution.update({
                     where: { id: execution.id },
                     data: {
@@ -144,6 +217,7 @@ router.post('/', async (req: Request, res: Response) => {
         child.on('error', async (error) => {
             isSimulationRunning = false
             currentProcess = null
+            broadcastEvent('simulation_end', { error: true })
             console.error('Erro na simulação background', error)
             try {
                 await prisma.execution.update({

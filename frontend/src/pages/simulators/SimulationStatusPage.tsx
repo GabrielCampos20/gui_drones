@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { CheckCircle, AlertCircle, FileText, ArrowLeft, Clock } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
+import DroneArena from '../../components/simulator/DroneArena'
 import {
     executionsApi,
     simulatorLabel,
@@ -134,6 +135,11 @@ export default function SimulationStatusPage() {
             title="Execução em andamento"
             description={`${simulatorName} — acompanhe o progresso da simulação.`}
         >
+            {/* Live 2D Arena */}
+            <div className="max-w-2xl mx-auto">
+                <DroneArena executionId={id ?? ''} />
+            </div>
+
             <div
                 className="max-w-2xl mx-auto p-8 rounded-xl border"
                 style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
