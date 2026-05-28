@@ -158,7 +158,7 @@ router.post('/', async (req: Request, res: Response) => {
         droppedPackages = []
 
         // 1. Sobrescrever o arquivo properties
-        const simsDir = path.resolve(__dirname, '..', '..', '..', 'sims')
+        const simsDir = path.resolve(__dirname, '..', '..', 'sims')
         const propertiesPath = path.join(simsDir, 'config.properties')
         fs.writeFileSync(propertiesPath, propertiesContent, 'utf-8')
 

@@ -56,7 +56,6 @@ export default function DroneDeliveryConfigPage() {
         formState: { errors, isSubmitting },
     } = useForm<DroneDeliveryFormValues>({
         resolver: zodResolver(DroneDeliverySchema),
-        shouldUnregister: true,
         defaultValues: {
             droneCount: 3,
             drones: [100, 200, 300],
