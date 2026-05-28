@@ -12,6 +12,8 @@ const PORT = process.env.PORT || 3000
 app.use(cors())
 app.use(express.json())
 
+app.use('/files', express.static(path.resolve(__dirname, '..', '..', 'sims')))
+
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
 app.use('/auth', authRouter)

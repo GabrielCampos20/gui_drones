@@ -157,16 +157,28 @@ router.post('/', async (req: Request, res: Response) => {
         isSimulationRunning = true
         droppedPackages = []
 
+        const simFolder = simulator === 'drone-delivery' ? 'drone_delivery_sim' : 'shared_drone_delivery_sim'
+        const jarName = simulator === 'drone-delivery' ? 'DroneDeliverySim.jar' : 'SharedDroneDeliverySim.jar'
+
         // 1. Sobrescrever o arquivo properties
-        const simsDir = path.resolve(__dirname, '..', '..', 'sims')
+        const simsDir = path.resolve(__dirname, '..', '..', 'sims', simFolder)
         const propertiesPath = path.join(simsDir, 'config.properties')
+        
+        // Verifica se a pasta existe antes de escrever
+        if (!fs.existsSync(simsDir)) {
+            fs.mkdirSync(simsDir, { recursive: true })
+        }
         fs.writeFileSync(propertiesPath, propertiesContent, 'utf-8')
 
-        // 2. Criar execução no banco
+        // 2. Criar execução no banco com caminhos preenchidos
         const execution = await prisma.execution.create({
             data: {
                 simulator,
                 propertiesContent,
+                queueTimeCsvPath: `${simFolder}/queue_time.csv`,
+                missionTimeCsvPath: `${simFolder}/mission_time.csv`,
+                flightTimeCsvPath: `${simFolder}/flight_time.csv`,
+                dropProbabilityCsvPath: `${simFolder}/drop_probability.csv`
             },
         })
 
@@ -177,7 +189,7 @@ router.post('/', async (req: Request, res: Response) => {
         broadcastEvent('simulation_start', { executionId: execution.id })
 
         // 4. Iniciar processamento em background
-        const jarPath = path.join(simsDir, 'DroneDeliverySim.jar')
+        const jarPath = path.join(simsDir, jarName)
         const child = spawn('java', ['-jar', jarPath], { cwd: simsDir })
         
         currentProcess = child
