@@ -1,11 +1,10 @@
 /**
  * DroneArena — Visualização em tempo real com Adaptive Sampling.
  *
- * O progress de cada drone é armazenado no estado e atualizado pelo
- * loop RAF a cada frame — garantindo movimento suave e contínuo.
- *
- * Sampler: divisor = max(1, round(rate / 5))
- * Ex: 691/s → divisor=138 → exibe ~5 drones/s
+ * ARQUITETURA:
+ * - Progress de cada drone é campo no estado, atualizado pelo RAF a cada frame
+ * - requestAnimationFrame é agendado FORA do setDrones (sem side effects em updaters)
+ * - Spawn acontece no ritmo do sampler → drones aparecem em momentos diferentes
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
@@ -31,15 +30,14 @@ type DroneStatus = 'flying'  | 'crashing'
 type ArenaStatus = 'idle'    | 'running' | 'done' | 'error'
 
 interface VisualDrone {
-  id:            number
-  lane:          number
-  phase:         DronePhase
-  status:        DroneStatus
-  progress:      number   // 0..1 — atualizado pelo RAF
-  lastTick:      number   // performance.now() do último frame
-  duration:      number   // ms da fase atual
-  crashProgress: number   // 0..1 durante crash
-  crashTick:     number   // performance.now() quando o crash iniciou
+  id:           number
+  lane:         number
+  phase:        DronePhase
+  status:       DroneStatus
+  progress:     number   // 0..1 acumulado pelo RAF
+  duration:     number   // ms desta fase
+  lastTick:     number   // timestamp do último RAF
+  crashStart:   number   // timestamp quando o crash iniciou (0 se não crashing)
 }
 
 // ─── Sampler ─────────────────────────────────────────────────────────────────
@@ -47,7 +45,7 @@ function calcDivisor(rate: number) { return Math.max(1, Math.round(rate / 5)) }
 
 // ─── UID ─────────────────────────────────────────────────────────────────────
 let _uid = 0
-function uid() { return _uid++ }
+const nextUid = () => _uid++
 
 // ─── Component ────────────────────────────────────────────────────────────────
 interface DroneArenaProps { executionId: string }
@@ -60,129 +58,160 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
   const [displayRate, setDisplayRate] = useState(0)
   const [displayDiv,  setDisplayDiv]  = useState(1)
 
-  const eventCounter  = useRef(0)
-  const divisor       = useRef(1)
-  const departsSeen   = useRef(0)
-  const rateHistory   = useRef<number[]>([])
-  const rafRef        = useRef<number | null>(null)
-  const abortRef      = useRef<AbortController | null>(null)
+  // Refs para o sampler (não causam re-render)
+  const eventCounter = useRef(0)
+  const divisor      = useRef(1)
+  const departsSeen  = useRef(0)
+  const rateHistory  = useRef<number[]>([])
+  const rafRef       = useRef<number | null>(null)
 
-  // ─── Sampler tick ──────────────────────────────────────────────────────────
+  // ─── Sampler: mede taxa por segundo e ajusta divisor ─────────────────────
   useEffect(() => {
     const t = setInterval(() => {
       const rate = eventCounter.current
       eventCounter.current = 0
       rateHistory.current.push(rate)
       if (rateHistory.current.length > 3) rateHistory.current.shift()
-      const avg = Math.round(rateHistory.current.reduce((a, b) => a + b, 0) / rateHistory.current.length)
-      const d = calcDivisor(avg)
-      divisor.current = d
+      const avg = Math.round(
+        rateHistory.current.reduce((a, b) => a + b, 0) / rateHistory.current.length
+      )
+      divisor.current = calcDivisor(avg)
       setDisplayRate(avg)
-      setDisplayDiv(d)
+      setDisplayDiv(divisor.current)
     }, 1000)
     return () => clearInterval(t)
   }, [])
 
-  // ─── RAF — progress stored in state ────────────────────────────────────────
+  // ─── RAF loop — avança progress de cada drone ─────────────────────────────
+  // IMPORTANTE: requestAnimationFrame é chamado FORA do setDrones
   const tick = useCallback((now: number) => {
     setDrones(prev => {
-      if (prev.length === 0) { rafRef.current = requestAnimationFrame(tick); return prev }
+      // Sem drones → retorna mesma ref para evitar re-render desnecessário
+      if (prev.length === 0) return prev
+
       let changed = false
       const next: VisualDrone[] = []
 
       for (const d of prev) {
+        const dt = now - d.lastTick
+
         if (d.status === 'crashing') {
-          const cp = Math.min((now - d.crashTick) / CRASH_MS, 1)
-          if (cp < 1) {
-            next.push({ ...d, crashProgress: cp, lastTick: now })
-            changed = true
-          } else {
-            changed = true // despawn
+          const crashElapsed = now - d.crashStart
+          if (crashElapsed >= CRASH_MS) {
+            changed = true   // despawn
+            continue
           }
+          next.push({ ...d, lastTick: now })
+          changed = true
           continue
         }
 
-        const dt = now - d.lastTick
+        // flying
         const newProg = d.progress + dt / d.duration
 
         if (newProg >= 1) {
           changed = true
           if (d.phase === 'forward') {
-            next.push({ ...d, phase: 'return', progress: 0, lastTick: now, duration: RETURN_MS })
+            // Inicia retorno
+            next.push({
+              ...d,
+              phase:    'return',
+              progress: 0,
+              duration: RETURN_MS,
+              lastTick: now,
+            })
           }
-          // return complete → despawn (don't push)
+          // retorno concluído → despawna (não adiciona)
         } else {
           next.push({ ...d, progress: newProg, lastTick: now })
           changed = true
         }
       }
 
-      rafRef.current = requestAnimationFrame(tick)
       return changed ? next : prev
     })
+
+    // Agenda próximo frame AQUI, fora do updater
+    rafRef.current = requestAnimationFrame(tick)
   }, [])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(tick)
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current) }
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    }
   }, [tick])
 
-  // ─── Spawn ────────────────────────────────────────────────────────────────
+  // ─── Spawn: adiciona drone em pista livre ─────────────────────────────────
   const spawnDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
-      const used = new Set(
+      // Pistas já usadas por drones indo para frente
+      const usedLanes = new Set(
         prev.filter(d => d.phase === 'forward' && d.status === 'flying').map(d => d.lane)
       )
       let lane = -1
-      for (let i = 0; i < LANES; i++) { if (!used.has(i)) { lane = i; break } }
-      if (lane === -1) return prev
-      return [...prev, {
-        id: uid(), lane,
-        phase: 'forward', status: 'flying',
-        progress: 0, lastTick: now, duration: FORWARD_MS,
-        crashProgress: 0, crashTick: 0,
-      }]
+      for (let i = 0; i < LANES; i++) {
+        if (!usedLanes.has(i)) { lane = i; break }
+      }
+      if (lane === -1) return prev // todas ocupadas → descarta silenciosamente
+
+      const newDrone: VisualDrone = {
+        id:         nextUid(),
+        lane,
+        phase:      'forward',
+        status:     'flying',
+        progress:   0,
+        duration:   FORWARD_MS,
+        lastTick:   now,
+        crashStart: 0,
+      }
+      return [...prev, newDrone]
     })
   }, [])
 
-  // ─── Crash ────────────────────────────────────────────────────────────────
+  // ─── Crash: marca um drone em voo como crashing ───────────────────────────
   const crashDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
       const idx = prev.findIndex(d => d.status === 'flying' && d.phase === 'forward')
       if (idx === -1) return prev
       const next = [...prev]
-      next[idx] = { ...next[idx], status: 'crashing', crashProgress: 0, crashTick: now }
+      next[idx] = { ...next[idx], status: 'crashing', crashStart: now, lastTick: now }
       return next
     })
   }, [])
 
-  // ─── Reset ────────────────────────────────────────────────────────────────
+  // ─── Reset completo ───────────────────────────────────────────────────────
   const resetState = useCallback(() => {
     setDrones([])
-    setDeliveries(0); setDrops(0); setDisplayRate(0); setDisplayDiv(1)
-    divisor.current = 1; departsSeen.current = 0
-    eventCounter.current = 0; rateHistory.current = []
+    setDeliveries(0)
+    setDrops(0)
+    setDisplayRate(0)
+    setDisplayDiv(1)
+    divisor.current     = 1
+    departsSeen.current = 0
+    eventCounter.current = 0
+    rateHistory.current  = []
   }, [])
 
-  // ─── SSE ──────────────────────────────────────────────────────────────────
+  // ─── SSE: consome eventos em tempo real ───────────────────────────────────
   useEffect(() => {
     const ctrl = new AbortController()
-    abortRef.current = ctrl
 
     ;(async () => {
       try {
         const res = await fetch(`${API_URL}/execucoes/stream`, { signal: ctrl.signal })
         if (!res.ok || !res.body) { setArenaStatus('error'); return }
 
-        const reader = res.body.getReader()
+        const reader  = res.body.getReader()
         const decoder = new TextDecoder()
-        let buf = ''
+        let   buf     = ''
 
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
+
           buf += decoder.decode(value, { stream: true })
           const frames = buf.split('\n\n')
           buf = frames.pop() ?? ''
@@ -192,37 +221,46 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
               if (!raw.startsWith('data:')) continue
               try {
                 const evt = JSON.parse(raw.slice(5).trim())
+
                 switch (evt.type) {
                   case 'connected':
+                    // Se não vier 'idle' em 300ms, assume simulação rodando
                     setTimeout(() => setArenaStatus(s => s === 'idle' ? 'running' : s), 300)
                     break
+
                   case 'idle':
                     setArenaStatus('idle')
                     break
+
                   case 'simulation_start':
                     resetState()
                     setArenaStatus('running')
                     break
+
                   case 'drone_depart':
                     setArenaStatus(s => s === 'idle' ? 'running' : s)
                     eventCounter.current++
                     departsSeen.current++
                     if (departsSeen.current % divisor.current === 0) spawnDrone()
                     break
+
                   case 'drone_arrive':
                     setArenaStatus(s => s === 'idle' ? 'running' : s)
                     setDeliveries(n => n + 1)
                     break
+
                   case 'package_drop':
                     setArenaStatus(s => s === 'idle' ? 'running' : s)
                     setDrops(n => n + 1)
                     crashDrone()
                     break
+
                   case 'simulation_end':
                     setArenaStatus('done')
-                    reader.cancel(); return
+                    reader.cancel()
+                    return
                 }
-              } catch { /* ignore */ }
+              } catch { /* ignora JSON malformado */ }
             }
           }
         }
@@ -243,17 +281,21 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
       <StatusBar arenaStatus={arenaStatus} displayDiv={displayDiv} />
 
       <div className="relative w-full select-none" style={{ height: 300, backgroundColor: '#0d1117' }}>
-        {/* Grid */}
+        {/* Grade de fundo */}
         <div className="absolute inset-0 pointer-events-none" style={{
           opacity: 0.03,
-          backgroundImage: 'linear-gradient(to right,#fff 1px,transparent 1px),linear-gradient(to bottom,#fff 1px,transparent 1px)',
+          backgroundImage:
+            'linear-gradient(to right,#fff 1px,transparent 1px),' +
+            'linear-gradient(to bottom,#fff 1px,transparent 1px)',
           backgroundSize: '40px 40px',
         }} />
-        {/* Divider */}
-        <div className="absolute left-0 right-0" style={{ top: '50%', height: 1, backgroundColor: 'var(--color-border)', opacity: 0.3 }} />
+
+        {/* Divisor central */}
+        <div className="absolute left-0 right-0"
+          style={{ top: '50%', height: 1, backgroundColor: 'var(--color-border)', opacity: 0.3 }} />
 
         <RouteLabel top="29%" label="COM PACOTE →" />
-        <RouteLabel top="71%" label="← RETORNO" />
+        <RouteLabel top="71%" label="← RETORNO"    />
 
         <WarehouseNode side="left"  active={arenaStatus === 'running'} />
         <WarehouseNode side="right" active={arenaStatus === 'running'} />
@@ -262,8 +304,10 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
 
         {arenaStatus === 'done' && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10 pointer-events-none">
-            <div className="px-6 py-3 rounded-lg border" style={{ borderColor: 'var(--color-success)', backgroundColor: 'rgba(34,197,94,0.1)' }}>
-              <span className="text-sm font-bold tracking-widest uppercase" style={{ color: 'var(--color-success)' }}>
+            <div className="px-6 py-3 rounded-lg border"
+              style={{ borderColor: 'var(--color-success)', backgroundColor: 'rgba(34,197,94,0.1)' }}>
+              <span className="text-sm font-bold tracking-widest uppercase"
+                style={{ color: 'var(--color-success)' }}>
                 Simulação Finalizada
               </span>
             </div>
@@ -271,7 +315,13 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
         )}
       </div>
 
-      <MetricsBar deliveries={deliveries} drops={drops} rate={displayRate} divisor={displayDiv} arenaStatus={arenaStatus} />
+      <MetricsBar
+        deliveries={deliveries}
+        drops={drops}
+        rate={displayRate}
+        divisor={displayDiv}
+        arenaStatus={arenaStatus}
+      />
     </div>
   )
 }
@@ -279,14 +329,16 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBar({ arenaStatus, displayDiv }: { arenaStatus: ArenaStatus; displayDiv: number }) {
-  const label = arenaStatus === 'running' ? 'Monitoramento em Tempo Real'
-    : arenaStatus === 'done'  ? 'Operação Concluída'
-    : arenaStatus === 'error' ? 'Falha de Telemetria'
-    : 'Aguardando Simulação'
-  const dotColor = arenaStatus === 'running' ? 'var(--color-cyan-primary)'
-    : arenaStatus === 'done'  ? 'var(--color-success)'
-    : arenaStatus === 'error' ? 'var(--color-error)'
-    : 'var(--color-text-muted)'
+  const label =
+    arenaStatus === 'running' ? 'Monitoramento em Tempo Real' :
+    arenaStatus === 'done'    ? 'Operação Concluída'          :
+    arenaStatus === 'error'   ? 'Falha de Telemetria'         : 'Aguardando Simulação'
+
+  const dotColor =
+    arenaStatus === 'running' ? 'var(--color-cyan-primary)' :
+    arenaStatus === 'done'    ? 'var(--color-success)'       :
+    arenaStatus === 'error'   ? 'var(--color-error)'         : 'var(--color-text-muted)'
+
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b"
       style={{ backgroundColor: '#11151c', borderColor: 'var(--color-border)' }}>
@@ -295,9 +347,8 @@ function StatusBar({ arenaStatus, displayDiv }: { arenaStatus: ArenaStatus; disp
           backgroundColor: dotColor,
           animation: arenaStatus === 'running' ? 'pulse-dot 1.5s ease-in-out infinite' : 'none',
         }} />
-        <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--color-text-secondary)' }}>
-          {label}
-        </span>
+        <span className="text-xs font-bold tracking-widest uppercase"
+          style={{ color: 'var(--color-text-secondary)' }}>{label}</span>
       </div>
       {arenaStatus === 'running' && displayDiv > 1 && (
         <span className="text-[10px] font-mono px-2 py-0.5 rounded"
@@ -313,7 +364,11 @@ function RouteLabel({ top, label }: { top: string; label: string }) {
   return (
     <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none" style={{ top, zIndex: 2 }}>
       <span className="text-[9px] font-bold tracking-[0.2em] uppercase px-2 py-0.5 rounded"
-        style={{ color: 'var(--color-text-muted)', backgroundColor: 'rgba(13,17,23,0.7)', border: '1px solid var(--color-border)' }}>
+        style={{
+          color: 'var(--color-text-muted)',
+          backgroundColor: 'rgba(13,17,23,0.7)',
+          border: '1px solid var(--color-border)',
+        }}>
         {label}
       </span>
     </div>
@@ -333,11 +388,17 @@ function WarehouseNode({ side, active }: { side: 'left' | 'right'; active: boole
         transition: 'all 0.5s ease',
       }}>
         <Warehouse size={20} style={{ color: active ? 'var(--color-cyan-primary)' : 'var(--color-text-muted)' }} />
-        {active && <div className="absolute inset-0 rounded-xl border border-cyan-500/20"
-          style={{ animation: 'node-breathe 2.5s ease-out infinite' }} />}
+        {active && (
+          <div className="absolute inset-0 rounded-xl border border-cyan-500/20"
+            style={{ animation: 'node-breathe 2.5s ease-out infinite' }} />
+        )}
       </div>
       <span className="text-[8px] font-bold tracking-[0.2em] uppercase px-1.5 py-0.5 rounded"
-        style={{ color: 'var(--color-text-muted)', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        style={{
+          color: 'var(--color-text-muted)',
+          backgroundColor: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+        }}>
         {isLeft ? 'GALPÃO A' : 'GALPÃO B'}
       </span>
     </div>
@@ -345,54 +406,57 @@ function WarehouseNode({ side, active }: { side: 'left' | 'right'; active: boole
 }
 
 function DroneToken({ drone }: { drone: VisualDrone }) {
-  const isForward  = drone.phase === 'forward'
+  const isForward  = drone.phase  === 'forward'
   const isCrashing = drone.status === 'crashing'
 
-  // Progress: crash uses crashProgress, flight uses progress
-  const raw = isCrashing ? drone.crashProgress : drone.progress
-
-  // Horizontal — use flight progress (not crash) for x position
-  const flightRaw = drone.progress
+  // Posição horizontal baseada no progress de voo
+  const prog    = Math.min(drone.progress, 1)
   const leftPct = isForward
-    ? WH_LEFT_PCT  + flightRaw * SPAN
-    : WH_RIGHT_PCT - flightRaw * SPAN
+    ? WH_LEFT_PCT  + prog * SPAN
+    : WH_RIGHT_PCT - prog * SPAN
 
-  // Vertical
-  const [top, bot] = isForward ? [FWD_TOP, FWD_BOT] : [RET_TOP, RET_BOT]
-  const topPct = top + (drone.lane / Math.max(LANES - 1, 1)) * (bot - top)
+  // Posição vertical — pista dentro da faixa da rota
+  const [rowTop, rowBot] = isForward ? [FWD_TOP, FWD_BOT] : [RET_TOP, RET_BOT]
+  const topPct = rowTop + (drone.lane / Math.max(LANES - 1, 1)) * (rowBot - rowTop)
 
-  const bobbing   = !isCrashing ? Math.sin(flightRaw * Math.PI * 7) * 2.5 : 0
-  const crashFall = isCrashing  ? raw * 60 : 0
+  // Crash: queda vertical proporcional ao tempo de crash
+  const crashProg = isCrashing && drone.crashStart > 0
+    ? Math.min((performance.now() - drone.crashStart) / CRASH_MS, 1)
+    : 0
+
+  const crashFall = crashProg * 60
+  const bobbing   = !isCrashing ? Math.sin(prog * Math.PI * 7) * 2.5 : 0
 
   const color    = isCrashing ? 'var(--color-error)' : isForward ? 'var(--color-cyan-primary)' : 'var(--color-text-muted)'
-  const rotation = isCrashing ? raw * 360 : isForward ? 90 : -90
-  const opacity  = isForward ? 1 : 0.45
+  const rotation = isCrashing ? crashProg * 360 : isForward ? 90 : -90
+  const opacity  = isForward ? 1 : 0.5
 
   return (
-    <div className="absolute flex flex-col items-center" style={{
-      left:      `${leftPct}%`,
-      top:       `${topPct}%`,
-      transform: `translate(-50%, calc(-50% + ${bobbing + crashFall}px)) rotate(${rotation}deg)`,
-      color, opacity,
-      zIndex:    isCrashing ? 6 : isForward ? 5 : 3,
-      pointerEvents: 'none',
-    }}>
+    <div className="absolute flex flex-col items-center pointer-events-none"
+      style={{
+        left:      `${leftPct}%`,
+        top:       `${topPct}%`,
+        transform: `translate(-50%, calc(-50% + ${bobbing + crashFall}px)) rotate(${rotation}deg)`,
+        color,
+        opacity,
+        zIndex: isCrashing ? 6 : isForward ? 5 : 3,
+      }}>
       <div className="relative">
         {isCrashing
           ? <AlertTriangle size={18} />
-          : <Navigation size={isForward ? 18 : 14} fill={isForward ? color : 'none'} strokeWidth={isForward ? 1.5 : 2} />
+          : <Navigation
+              size={isForward ? 18 : 14}
+              fill={isForward ? color : 'none'}
+              strokeWidth={isForward ? 1.5 : 2}
+            />
         }
         {isForward && !isCrashing && (
           <div className="absolute inset-0 rounded-full blur-md"
             style={{ backgroundColor: color, opacity: 0.3, transform: 'scale(1.6)' }} />
         )}
-        {isCrashing && (
-          <div className="absolute inset-0 rounded-full border-2"
-            style={{ borderColor: color, animation: 'status-glow 0.8s ease-out forwards' }} />
-        )}
       </div>
       {isForward && !isCrashing && (
-        <Package size={8} style={{ marginTop: 2, color: 'var(--color-cyan-light)', opacity: 0.85 }} />
+        <Package size={8} style={{ marginTop: 2, color: 'var(--color-cyan-light)', opacity: 0.8 }} />
       )}
     </div>
   )
@@ -419,7 +483,8 @@ function MetricsBar({ deliveries, drops, rate, divisor, arenaStatus }: {
 function Metric({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[9px] font-bold tracking-wider uppercase" style={{ color: 'var(--color-text-muted)' }}>
+      <span className="text-[9px] font-bold tracking-wider uppercase"
+        style={{ color: 'var(--color-text-muted)' }}>
         {icon} {label}
       </span>
       <span className="text-sm font-bold tabular-nums" style={{ color }}>{value}</span>
