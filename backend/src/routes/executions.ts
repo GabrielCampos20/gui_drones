@@ -22,19 +22,26 @@ function broadcastEvent(type: string, payload: Record<string, unknown>) {
 
 // ─── Regex helpers ────────────────────────────────────────────────────────────
 
+// Aceita vírgula OU ponto como separador decimal (locale pt-BR do Java)
+// Matches: [104230,00] Drone 90 completed package 88 (queue 7,47 ms + flight 403,95 ms = mission 411,42 ms)
 // Matches: [430.00] Drone 55 completed package 0 (queue 5.70 ms + flight 206.98 ms = mission 212.68 ms)
-const COMPLETE_RE = /\[(\d+(?:\.\d+)?)\]\s+Drone\s+(\d+)\s+completed\s+package\s+(\d+)\s+\(queue\s+[\d.]+\s+ms\s+\+\s+flight\s+([\d.]+)\s+ms/
+const COMPLETE_RE = /\[(\d+(?:[.,]\d+)?)\]\s+Drone\s+(\d+)\s+completed\s+package\s+(\d+)\s+\(queue\s+[\d.,]+\s+ms\s+\+\s+flight\s+([\d.,]+)\s+ms/
 
 // Matches: Package 656 has been dropped.
 const DROP_RE = /Package\s+(\d+)\s+has\s+been\s+dropped\./
 
+/** Normaliza separador decimal: substitui vírgula por ponto antes do parseFloat */
+function toFloat(s: string): number {
+    return parseFloat(s.replace(',', '.'))
+}
+
 function parseStdoutLine(line: string) {
     const m = line.match(COMPLETE_RE)
     if (!m) return
-    const arriveTime = parseFloat(m[1])
-    const droneId = parseInt(m[2], 10)
-    const packageId = parseInt(m[3], 10)
-    const flightTime = parseFloat(m[4])
+    const arriveTime = toFloat(m[1])
+    const droneId    = parseInt(m[2], 10)
+    const packageId  = parseInt(m[3], 10)
+    const flightTime = toFloat(m[4])
     const departTime = arriveTime - flightTime
 
     broadcastEvent('drone_depart', { droneId, packageId, departTime, flightTime })
@@ -151,7 +158,7 @@ router.post('/', async (req: Request, res: Response) => {
         droppedPackages = []
 
         // 1. Sobrescrever o arquivo properties
-        const simsDir = path.resolve(__dirname, '..', '..', 'sims')
+        const simsDir = path.resolve(__dirname, '..', '..', '..', 'sims')
         const propertiesPath = path.join(simsDir, 'config.properties')
         fs.writeFileSync(propertiesPath, propertiesContent, 'utf-8')
 
@@ -182,7 +189,7 @@ router.post('/', async (req: Request, res: Response) => {
             const chunk = data.toString()
             stdoutBuffer += chunk
             const lines = stdoutBuffer.split('\n')
-            stdoutBuffer = lines.pop() ?? '' // keep the incomplete tail in the buffer
+            stdoutBuffer = lines.pop() ?? ''
             for (const line of lines) {
                 parseStdoutLine(line)
             }
