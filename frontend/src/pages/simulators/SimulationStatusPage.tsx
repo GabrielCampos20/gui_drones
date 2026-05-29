@@ -4,6 +4,7 @@ import { CheckCircle, AlertCircle, FileText, ArrowLeft, Clock } from 'lucide-rea
 import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
 import DroneArena from '../../components/simulator/DroneArena'
+import SimulationPlots from '../../components/simulator/SimulationPlots'
 import {
     executionsApi,
     simulatorLabel,
@@ -32,7 +33,7 @@ function ResultFile({ label, path }: { label: string; path: string | null }) {
     const filename = path.split('/').pop() ?? path
     return (
         <a
-            href={`${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/files/${encodeURIComponent(path)}`}
+            href={`${import.meta.env.VITE_API_URL ?? 'http://localhost:3000'}/files/${path.split('/').map(encodeURIComponent).join('/')}`}
             target="_blank"
             rel="noreferrer"
             className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors"
@@ -248,22 +249,24 @@ export default function SimulationStatusPage() {
                 {/* Parâmetros usados */}
                 {execution?.propertiesContent && (
                     <div className="mb-6">
-                        <p className="text-sm font-semibold mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                            Parâmetros utilizados
+                        <p className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                            Parâmetros
                         </p>
                         <pre
-                            className="text-xs p-3 rounded-lg overflow-x-auto"
+                            className="text-xs p-4 rounded-lg overflow-x-auto"
                             style={{
-                                backgroundColor: 'var(--color-surface)',
+                                backgroundColor: 'var(--color-background)',
                                 border: '1px solid var(--color-border)',
-                                color: 'var(--color-text-muted)',
-                                fontFamily: 'monospace',
+                                color: 'var(--color-cyan-light)',
                             }}
                         >
                             {execution.propertiesContent}
                         </pre>
                     </div>
                 )}
+
+                {/* Gráficos Gerados Dinamicamente */}
+                {isDone && execution && <SimulationPlots execution={execution} />}
 
                 {/* Ações */}
                 <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>

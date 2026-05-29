@@ -13,11 +13,14 @@
     "@hookform/resolvers": "^3.9.0",
     "@tailwindcss/vite": "^4.3.0",
     "axios": "^1.16.1",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^1.16.0",
+    "papaparse": "^5.5.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-router-dom": "^7.6.3",
     "react-hook-form": "^7.53.0",
+    "react-router-dom": "^7.6.3",
+    "recharts": "^2.13.3",
     "sonner": "^1.5.0",
     "tailwindcss": "^4.3.0",
     "zod": "^3.23.8"
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
