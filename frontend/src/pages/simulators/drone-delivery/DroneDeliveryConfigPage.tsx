@@ -4,11 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import * as z from 'zod'
-import axios from 'axios'
 import PageShell from '../../../components/ui/PageShell'
 import Modal from '../../../components/ui/Modal'
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { executionsApi } from '../../../services/executions'
 
 const DroneDeliverySchema = z.object({
     droneCount: z.number().int().positive(),
@@ -87,7 +85,7 @@ export default function DroneDeliveryConfigPage() {
     }, [droneCount, drones, setValue])
 
     const onSubmit = async (data: DroneDeliveryFormValues) => {
-        const final = [
+        const propertiesContent = [
             `drones=${data.drones.join(',')}`,
             `ar.min=${formatNumberPreserveDecimal(data.arMin)}`,
             `ar.max=${formatNumberPreserveDecimal(data.arMax)}`,
@@ -98,11 +96,8 @@ export default function DroneDeliveryConfigPage() {
         ].join('\n')
 
         try {
-            const response = await axios.post(`${API_URL}/execucoes`, { 
-                simulator: 'drone-delivery', 
-                propertiesContent: final 
-            })
-            navigate(`/simuladores/execucao/${response.data.id}`)
+            const { data: execution } = await executionsApi.start('drone-delivery', propertiesContent)
+            navigate(`/simuladores/execucao/${execution.id}`)
         } catch (error) {
             console.error('Erro ao iniciar a simulação:', error)
             setIsErrorModalOpen(true)

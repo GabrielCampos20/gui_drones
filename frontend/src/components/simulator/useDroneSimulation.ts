@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { API_URL } from '../../lib/api'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const LANES        = 4                          // Quantidade de pistas horizontais paralelas para os drones voarem sem colidir.

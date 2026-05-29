@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Clock, PlayCircle, CheckCircle, RefreshCw, AlertCircle, ArrowLeft, Trash2 } from 'lucide-react'
+import { Clock, PlayCircle, CheckCircle, RefreshCw, AlertCircle, Trash2 } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
+import BackLink from '../../components/ui/BackLink'
+import DangerButton from '../../components/ui/DangerButton'
 import {
     executionsApi,
     simulatorLabel,
@@ -108,7 +110,7 @@ export default function HistoryPage() {
     const [isClearModalOpen, setIsClearModalOpen] = useState(false)
     const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
 
-    async function load() {
+    const load = useCallback(async () => {
         setIsLoading(true)
         setIsOffline(false)
         try {
@@ -119,7 +121,24 @@ export default function HistoryPage() {
         } finally {
             setIsLoading(false)
         }
-    }
+    }, [])
+
+    // Auto-polling: atualiza silenciosamente a cada 5s enquanto houver execuções em andamento.
+    useEffect(() => {
+        const hasRunning = executions.some(e => !e.finishedAt)
+        if (!hasRunning || isOffline || isLoading) return
+
+        const id = setInterval(async () => {
+            try {
+                const { data } = await executionsApi.list()
+                setExecutions(data)
+            } catch { /* silencioso — erros são tratados pelo load principal */ }
+        }, 5000)
+
+        return () => clearInterval(id)
+    }, [executions, isOffline, isLoading])
+
+    useEffect(() => { load() }, [load])
 
     function confirmClearAll() {
         setIsClearModalOpen(true)
@@ -140,8 +159,6 @@ export default function HistoryPage() {
         }
     }
 
-    useEffect(() => { load() }, [])
-
     return (
         <PageShell
             title="Histórico de Execuções"
@@ -149,16 +166,7 @@ export default function HistoryPage() {
         >
             {/* Header actions */}
             <div className="flex items-center justify-between mb-6">
-                <Link
-                    to="/"
-                    className="flex items-center gap-2 text-sm transition-colors"
-                    style={{ color: 'var(--color-text-muted)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
-                >
-                    <ArrowLeft size={14} />
-                    Voltar
-                </Link>
+                <BackLink to="/" />
 
                 <div className="flex items-center gap-3">
                     <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
@@ -166,31 +174,15 @@ export default function HistoryPage() {
                     </p>
                     
                     {!isLoading && !isOffline && executions.length > 0 && (
-                        <button
+                        <DangerButton
                             onClick={confirmClearAll}
                             disabled={isClearing || isLoading}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm border transition-colors"
-                            style={{
-                                borderColor: '#ef4444',
-                                color: '#ef4444',
-                                backgroundColor: 'transparent',
-                                cursor: (isClearing || isLoading) ? 'not-allowed' : 'pointer',
-                                opacity: (isClearing || isLoading) ? 0.5 : 1,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isClearing && !isLoading) {
-                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isClearing && !isLoading) {
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }
-                            }}
+                            isLoading={isClearing}
+                            loadingLabel="Limpando..."
                         >
                             <Trash2 size={13} />
-                            {isClearing ? 'Limpando...' : 'Limpar'}
-                        </button>
+                            Limpar
+                        </DangerButton>
                     )}
 
                     <button

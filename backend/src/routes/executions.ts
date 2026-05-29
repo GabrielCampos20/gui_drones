@@ -7,9 +7,23 @@ import fs from 'fs'
 
 const router = Router()
 
-export let isSimulationRunning = false
-export let droppedPackages: number[] = []
-export let currentProcess: ChildProcess | null = null
+// ─── Simulation State ─────────────────────────────────────────────────────────
+// AVISO: Este estado é em memória e vinculado a este processo Node.js.
+// Não é seguro rodar com múltiplas instâncias (ex: PM2 cluster mode),
+// pois o estado diverge entre processos. Para este projeto acadêmico,
+// assume-se deployment de processo único.
+
+const simState = {
+    isRunning: false,
+    droppedPackages: [] as number[],
+    currentProcess: null as ChildProcess | null,
+
+    reset() {
+        this.isRunning = false
+        this.droppedPackages = []
+        this.currentProcess = null
+    },
+}
 
 // ─── SSE event bus ────────────────────────────────────────────────────────────
 // Fans out simulation events to all connected SSE clients
@@ -52,14 +66,14 @@ function parseStderrLine(line: string) {
     const m = line.match(DROP_RE)
     if (m) {
         const packageId = parseInt(m[1], 10)
-        droppedPackages.push(packageId)
+        simState.droppedPackages.push(packageId)
         broadcastEvent('package_drop', { packageId })
     }
 }
 
 // ─── GET /execucoes/status ───────────────────────────────────────────────────
 router.get('/status', (req: Request, res: Response) => {
-    res.json({ isRunning: isSimulationRunning })
+    res.json({ isRunning: simState.isRunning })
 })
 
 // ─── GET /execucoes/stream ────────────────────────────────────────────────────
@@ -92,7 +106,7 @@ router.get('/stream', (req: Request, res: Response) => {
 
 // ─── GET /execucoes/dropped-packages ─────────────────────────────────────────
 router.get('/dropped-packages', (req: Request, res: Response) => {
-    res.json({ droppedPackages })
+    res.json({ droppedPackages: simState.droppedPackages })
 })
 
 // ─── GET /execucoes ──────────────────────────────────────────────────────────
@@ -126,12 +140,12 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string
 
-        if (!isSimulationRunning || !currentProcess) {
+        if (!simState.isRunning || !simState.currentProcess) {
             res.status(400).json({ error: 'Não há simulação rodando no momento para ser parada.' })
             return
         }
 
-        currentProcess.kill('SIGTERM')
+        simState.currentProcess.kill('SIGTERM')
         res.json({ message: 'Simulação abortada com sucesso.' })
     } catch (error) {
         console.error('Error stopping execution:', error)
@@ -141,7 +155,7 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
 
 // ─── POST /execucoes ─────────────────────────────────────────────────────────
 router.post('/', async (req: Request, res: Response) => {
-    if (isSimulationRunning) {
+    if (simState.isRunning) {
         res.status(409).json({ error: 'Uma simulação já está em andamento.' })
         return
     }
@@ -154,8 +168,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     try {
-        isSimulationRunning = true
-        droppedPackages = []
+        simState.isRunning = true
+        simState.droppedPackages = []
 
         // 1. Sobrescrever o arquivo properties
         const simsDir = path.resolve(__dirname, '..', '..', '..', 'sims')
@@ -180,7 +194,7 @@ router.post('/', async (req: Request, res: Response) => {
         const jarPath = path.join(simsDir, 'DroneDeliverySim.jar')
         const child = spawn('java', ['-jar', jarPath], { cwd: simsDir })
         
-        currentProcess = child
+        simState.currentProcess = child
 
         let stdoutBuffer = ''
         let stderrBuffer = ''
@@ -206,8 +220,8 @@ router.post('/', async (req: Request, res: Response) => {
         })
 
         child.on('close', async () => {
-            isSimulationRunning = false
-            currentProcess = null
+            simState.isRunning = false
+            simState.currentProcess = null
             broadcastEvent('simulation_end', {})
             try {
                 await prisma.execution.update({
@@ -222,8 +236,8 @@ router.post('/', async (req: Request, res: Response) => {
         })
 
         child.on('error', async (error) => {
-            isSimulationRunning = false
-            currentProcess = null
+            simState.isRunning = false
+            simState.currentProcess = null
             broadcastEvent('simulation_end', { error: true })
             console.error('Erro na simulação background', error)
             try {
@@ -238,8 +252,7 @@ router.post('/', async (req: Request, res: Response) => {
             }
         })
     } catch (error) {
-        isSimulationRunning = false
-        currentProcess = null
+        simState.reset()
         console.error('Error starting execution:', error)
         res.status(500).json({ error: 'Erro ao iniciar simulação.' })
     }

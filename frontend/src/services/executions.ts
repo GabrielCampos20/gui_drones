@@ -1,6 +1,5 @@
 import axios from 'axios'
-
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
+import { API_URL } from '../lib/api'
 
 export type Execution = {
     id: string
@@ -22,6 +21,10 @@ export const executionsApi = {
 
     getById: (id: string) =>
         axios.get<Execution>(`${API_URL}/execucoes/${id}`),
+
+    /** Inicia uma nova simulação. */
+    start: (simulator: string, propertiesContent: string) =>
+        axios.post<Execution>(`${API_URL}/execucoes`, { simulator, propertiesContent }),
 
     stop: (id: string) =>
         axios.post<{ message: string }>(`${API_URL}/execucoes/${id}/stop`),
