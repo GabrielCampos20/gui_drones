@@ -1,0 +1,46 @@
+@keyframes drone-spin-fast {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes drone-spin-normal {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes drone-led-blink {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 2px currentColor); }
+  50% { opacity: 0.2; filter: none; }
+}
+@keyframes drone-led-blink-fast {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 3px currentColor); }
+  50% { opacity: 0.1; filter: none; }
+}
+@keyframes node-breathe {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.08); }
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.5; }
+}
+
+.propeller-tl { transform-origin: 6px 6px; }
+.propeller-tr { transform-origin: 30px 6px; }
+.propeller-bl { transform-origin: 6px 30px; }
+.propeller-br { transform-origin: 30px 30px; }
+
+.spin-fast {
+  animation: drone-spin-fast 0.08s linear infinite;
+}
+.spin-normal {
+  animation: drone-spin-normal 0.18s linear infinite;
+}
+.spin-stopped {
+  animation: drone-spin-normal 0.8s ease-out 1 forwards;
+}
+
+.led-flash {
+  animation: drone-led-blink 1s infinite;
+}
+.led-flash-fast {
+  animation: drone-led-blink-fast 0.2s infinite;
+}
