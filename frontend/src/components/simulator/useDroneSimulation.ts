@@ -3,31 +3,31 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-export const LANES        = 4
-export const FORWARD_MS   = 3500
-export const RETURN_MS    = 3000
-export const CRASH_MS     = 900
-export const WH_LEFT_PCT  = 12
-export const WH_RIGHT_PCT = 88
-export const SPAN         = WH_RIGHT_PCT - WH_LEFT_PCT
+export const LANES        = 4                          // Quantidade de pistas horizontais paralelas para os drones voarem sem colidir.
+export const FORWARD_MS   = 3500                       // Duração da rota de ida (com pacote) em milissegundos (controla velocidade da ida).
+export const RETURN_MS    = 3000                       // Duração da rota de volta (vazio) em milissegundos (controla velocidade do retorno).
+export const CRASH_MS     = 900                        // Tempo de queda do drone em milissegundos (velocidade da animação de crash).
+export const WH_LEFT_PCT  = 12                         // Posição horizontal inicial associada ao Galpão A (em % da largura total).
+export const WH_RIGHT_PCT = 88                         // Posição horizontal final associada ao Galpão B (em % da largura total).
+export const SPAN         = WH_RIGHT_PCT - WH_LEFT_PCT // Amplitude horizontal útil de voo calculada automaticamente.
 
-export const FWD_TOP = 10; export const FWD_BOT = 40
-export const RET_TOP = 60; export const RET_BOT = 90
+export const FWD_TOP = 10; export const FWD_BOT = 40   // Faixa de altura (topo e base) ocupada pela rota de IDA (em % da arena).
+export const RET_TOP = 60; export const RET_BOT = 90   // Faixa de altura (topo e base) ocupada pela rota de RETORNO (em % da arena).
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-export type DronePhase  = 'forward' | 'return'
-export type DroneStatus = 'flying'  | 'crashing'
-export type ArenaStatus = 'idle'    | 'running' | 'done' | 'error'
+export type DronePhase = 'forward' | 'return'
+export type DroneStatus = 'flying' | 'crashing'
+export type ArenaStatus = 'idle' | 'running' | 'done' | 'error'
 
 export interface VisualDrone {
-  id:           number
-  lane:         number
-  phase:        DronePhase
-  status:       DroneStatus
-  progress:     number
-  duration:     number
-  lastTick:     number
-  crashStart:   number
+  id: number
+  lane: number
+  phase: DronePhase
+  status: DroneStatus
+  progress: number
+  duration: number
+  lastTick: number
+  crashStart: number
 }
 
 // ─── Sampler Helper ──────────────────────────────────────────────────────────
@@ -39,18 +39,18 @@ const nextUid = () => _uid++
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 export default function useDroneSimulation(executionId: string) {
-  const [drones,      setDrones]      = useState<VisualDrone[]>([])
+  const [drones, setDrones] = useState<VisualDrone[]>([])
   const [arenaStatus, setArenaStatus] = useState<ArenaStatus>('idle')
-  const [deliveries,  setDeliveries]  = useState(0)
-  const [drops,       setDrops]       = useState(0)
+  const [deliveries, setDeliveries] = useState(0)
+  const [drops, setDrops] = useState(0)
   const [displayRate, setDisplayRate] = useState(0)
-  const [displayDiv,  setDisplayDiv]  = useState(1)
+  const [displayDiv, setDisplayDiv] = useState(1)
 
   const eventCounter = useRef(0)
-  const divisor      = useRef(1)
-  const departsSeen  = useRef(0)
-  const rateHistory  = useRef<number[]>([])
-  const rafRef       = useRef<number | null>(null)
+  const divisor = useRef(1)
+  const departsSeen = useRef(0)
+  const rateHistory = useRef<number[]>([])
+  const rafRef = useRef<number | null>(null)
 
   // ─── Sampler: taxa de eventos ──────────────────────────────────────────────
   useEffect(() => {
@@ -98,7 +98,7 @@ export default function useDroneSimulation(executionId: string) {
           if (d.phase === 'forward') {
             next.push({
               ...d,
-              phase:    'return',
+              phase: 'return',
               progress: 0,
               duration: RETURN_MS,
               lastTick: now,
@@ -137,13 +137,13 @@ export default function useDroneSimulation(executionId: string) {
       if (lane === -1) return prev
 
       const newDrone: VisualDrone = {
-        id:         nextUid(),
+        id: nextUid(),
         lane,
-        phase:      'forward',
-        status:     'flying',
-        progress:   0,
-        duration:   FORWARD_MS,
-        lastTick:   now,
+        phase: 'forward',
+        status: 'flying',
+        progress: 0,
+        duration: FORWARD_MS,
+        lastTick: now,
         crashStart: 0,
       }
       return [...prev, newDrone]
@@ -169,79 +169,79 @@ export default function useDroneSimulation(executionId: string) {
     setDrops(0)
     setDisplayRate(0)
     setDisplayDiv(1)
-    divisor.current     = 1
+    divisor.current = 1
     departsSeen.current = 0
     eventCounter.current = 0
-    rateHistory.current  = []
+    rateHistory.current = []
   }, [])
 
   // ─── SSE Stream Connection ─────────────────────────────────────────────────
   useEffect(() => {
     const ctrl = new AbortController()
 
-    ;(async () => {
-      try {
-        const res = await fetch(`${API_URL}/execucoes/stream`, { signal: ctrl.signal })
-        if (!res.ok || !res.body) { setArenaStatus('error'); return }
+      ; (async () => {
+        try {
+          const res = await fetch(`${API_URL}/execucoes/stream`, { signal: ctrl.signal })
+          if (!res.ok || !res.body) { setArenaStatus('error'); return }
 
-        const reader  = res.body.getReader()
-        const decoder = new TextDecoder()
-        let   buf     = ''
+          const reader = res.body.getReader()
+          const decoder = new TextDecoder()
+          let buf = ''
 
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
 
-          buf += decoder.decode(value, { stream: true })
-          const frames = buf.split('\n\n')
-          buf = frames.pop() ?? ''
+            buf += decoder.decode(value, { stream: true })
+            const frames = buf.split('\n\n')
+            buf = frames.pop() ?? ''
 
-          for (const frame of frames) {
-            for (const raw of frame.split('\n')) {
-              if (!raw.startsWith('data:')) continue
-              try {
-                const evt = JSON.parse(raw.slice(5).trim())
+            for (const frame of frames) {
+              for (const raw of frame.split('\n')) {
+                if (!raw.startsWith('data:')) continue
+                try {
+                  const evt = JSON.parse(raw.slice(5).trim())
 
-                switch (evt.type) {
-                  case 'connected':
-                    setTimeout(() => setArenaStatus(s => s === 'idle' ? 'running' : s), 300)
-                    break
-                  case 'idle':
-                    setArenaStatus('idle')
-                    break
-                  case 'simulation_start':
-                    resetState()
-                    setArenaStatus('running')
-                    break
-                  case 'drone_depart':
-                    setArenaStatus(s => s === 'idle' ? 'running' : s)
-                    eventCounter.current++
-                    departsSeen.current++
-                    if (departsSeen.current % divisor.current === 0) spawnDrone()
-                    break
-                  case 'drone_arrive':
-                    setArenaStatus(s => s === 'idle' ? 'running' : s)
-                    setDeliveries(n => n + 1)
-                    break
-                  case 'package_drop':
-                    setArenaStatus(s => s === 'idle' ? 'running' : s)
-                    setDrops(n => n + 1)
-                    crashDrone()
-                    break
-                  case 'simulation_end':
-                    setArenaStatus('done')
-                    reader.cancel()
-                    return
-                }
-              } catch { /* ignore */ }
+                  switch (evt.type) {
+                    case 'connected':
+                      setTimeout(() => setArenaStatus(s => s === 'idle' ? 'running' : s), 300)
+                      break
+                    case 'idle':
+                      setArenaStatus('idle')
+                      break
+                    case 'simulation_start':
+                      resetState()
+                      setArenaStatus('running')
+                      break
+                    case 'drone_depart':
+                      setArenaStatus(s => s === 'idle' ? 'running' : s)
+                      eventCounter.current++
+                      departsSeen.current++
+                      if (departsSeen.current % divisor.current === 0) spawnDrone()
+                      break
+                    case 'drone_arrive':
+                      setArenaStatus(s => s === 'idle' ? 'running' : s)
+                      setDeliveries(n => n + 1)
+                      break
+                    case 'package_drop':
+                      setArenaStatus(s => s === 'idle' ? 'running' : s)
+                      setDrops(n => n + 1)
+                      crashDrone()
+                      break
+                    case 'simulation_end':
+                      setArenaStatus('done')
+                      reader.cancel()
+                      return
+                  }
+                } catch { /* ignore */ }
+              }
             }
           }
+          setArenaStatus('done')
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name !== 'AbortError') setArenaStatus('error')
         }
-        setArenaStatus('done')
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name !== 'AbortError') setArenaStatus('error')
-      }
-    })()
+      })()
 
     return () => ctrl.abort()
   }, [executionId, spawnDrone, crashDrone, resetState])

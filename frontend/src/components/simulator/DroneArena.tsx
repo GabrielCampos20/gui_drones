@@ -25,8 +25,8 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
 
       <StatusBar arenaStatus={arenaStatus} displayDiv={displayDiv} />
-
-      <div className="relative w-full select-none" style={{ height: 300, backgroundColor: '#0d1117' }}>
+      {/*para mudar o tamanho da area de simulação alterar height em pixels*/}
+      <div className="relative w-full select-none" style={{ height: 400, backgroundColor: '#0d1117' }}>
         {/* Grade de fundo */}
         <div className="absolute inset-0 pointer-events-none" style={{
           opacity: 0.03,
