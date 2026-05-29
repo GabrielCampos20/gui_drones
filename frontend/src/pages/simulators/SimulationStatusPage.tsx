@@ -1,10 +1,15 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { CheckCircle, AlertCircle, FileText, ArrowLeft, Clock } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Clock } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
 import DroneArena from '../../components/simulator/DroneArena'
+<<<<<<< HEAD
 import SimulationPlots from '../../components/simulator/SimulationPlots'
+=======
+import BackLink from '../../components/ui/BackLink'
+import DangerButton from '../../components/ui/DangerButton'
+>>>>>>> joao-marcos
 import {
     executionsApi,
     simulatorLabel,
@@ -123,17 +128,23 @@ export default function SimulationStatusPage() {
     }
 
     const isDone = !!execution?.finishedAt
-    const isError = !isDone && elapsed > 300 // mais de 5 min sem resposta
 
-    // ─── Conteúdo do status ───────────────────────────────────────────────────
+    // Calcula o tempo decorrido a partir do startedAt real da execução (item 6).
+    // `elapsed` serve apenas como tick para forçar re-renders a cada segundo.
+    const simulationElapsedSec = execution
+        ? Math.floor((Date.now() - new Date(execution.startedAt).getTime()) / 1000)
+        : elapsed
 
-    const simulatorName = execution
-        ? simulatorLabel(execution.simulator)
-        : 'Simulador'
+    const isError = !isDone && simulationElapsedSec > 300 // mais de 5 min
+
+    // ─── Título dinâmico (item 5) ───────────────────────────────────────────────
+
+    const simulatorName = execution ? simulatorLabel(execution.simulator) : 'Simulador'
+    const pageTitle = isDone ? 'Simulação concluída' : 'Execução em andamento'
 
     return (
         <PageShell
-            title="Execução em andamento"
+            title={pageTitle}
             description={`${simulatorName} — acompanhe o progresso da simulação.`}
         >
             {/* Live 2D Arena */}
@@ -186,7 +197,7 @@ export default function SimulationStatusPage() {
                             }}
                         >
                             <Clock size={13} />
-                            {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} decorrido
+                            {Math.floor(simulationElapsedSec / 60)}:{String(simulationElapsedSec % 60).padStart(2, '0')} decorrido
                         </div>
                     </div>
                 )}
@@ -270,16 +281,7 @@ export default function SimulationStatusPage() {
 
                 {/* Ações */}
                 <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <Link
-                        to="/historico"
-                        className="flex items-center gap-2 text-sm"
-                        style={{ color: 'var(--color-text-muted)' }}
-                        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-text-secondary)')}
-                        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-text-muted)')}
-                    >
-                        <ArrowLeft size={14} />
-                        Ver histórico
-                    </Link>
+                    <BackLink to="/historico" label="Ver histórico" />
 
                     {isDone ? (
                         <Link
@@ -293,29 +295,15 @@ export default function SimulationStatusPage() {
                             Nova simulação
                         </Link>
                     ) : (
-                        <button
+                        <DangerButton
                             onClick={handleStop}
                             disabled={isStopping}
-                            className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                            style={{
-                                border: '1px solid #ef4444',
-                                color: '#ef4444',
-                                opacity: isStopping ? 0.7 : 1,
-                                cursor: isStopping ? 'not-allowed' : 'pointer',
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isStopping) {
-                                    e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isStopping) {
-                                    e.currentTarget.style.backgroundColor = 'transparent'
-                                }
-                            }}
+                            isLoading={isStopping}
+                            loadingLabel="Parando..."
+                            className="px-4 py-2 font-medium"
                         >
-                            {isStopping ? 'Parando...' : 'Parar Simulação'}
-                        </button>
+                            Parar Simulação
+                        </DangerButton>
                     )}
                 </div>
             </div>
