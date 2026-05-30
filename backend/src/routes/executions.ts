@@ -8,14 +8,20 @@ import fs from 'fs'
 const router = Router()
 
 function getSimsBaseDir() {
+    // 1. Verifica se está rodando dentro do Docker (onde o volume é montado em /app/sims)
+    if (fs.existsSync('/app/sims')) {
+        return '/app/sims'
+    }
+
+    // 2. Busca a raiz do monorepo (onde ficam as pastas backend e frontend juntas)
     let currentDir = __dirname
     while (currentDir !== path.parse(currentDir).root) {
-        const testPath = path.join(currentDir, 'sims')
-        if (fs.existsSync(testPath)) {
-            return testPath
+        if (fs.existsSync(path.join(currentDir, 'backend')) && fs.existsSync(path.join(currentDir, 'frontend'))) {
+            return path.join(currentDir, 'sims')
         }
         currentDir = path.dirname(currentDir)
     }
+
     // Fallback para caso extremo
     return path.resolve(__dirname, '..', '..', '..', 'sims')
 }
