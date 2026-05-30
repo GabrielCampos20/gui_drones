@@ -7,6 +7,19 @@ import fs from 'fs'
 
 const router = Router()
 
+function getSimsBaseDir() {
+    let currentDir = __dirname
+    while (currentDir !== path.parse(currentDir).root) {
+        const testPath = path.join(currentDir, 'sims')
+        if (fs.existsSync(testPath)) {
+            return testPath
+        }
+        currentDir = path.dirname(currentDir)
+    }
+    // Fallback para caso extremo
+    return path.resolve(__dirname, '..', '..', '..', 'sims')
+}
+
 // ─── Simulation State ─────────────────────────────────────────────────────────
 // AVISO: Este estado é em memória e vinculado a este processo Node.js.
 // Não é seguro rodar com múltiplas instâncias (ex: PM2 cluster mode),
@@ -175,7 +188,8 @@ router.post('/', async (req: Request, res: Response) => {
         const jarName = simulator === 'drone-delivery' ? 'DroneDeliverySim.jar' : 'SharedDroneDeliverySim.jar'
 
         // 1. Sobrescrever o arquivo properties
-        const simsDir = path.resolve(__dirname, '..', '..', '..', 'sims', simFolder)
+        const baseDir = getSimsBaseDir()
+        const simsDir = path.join(baseDir, simFolder)
         const propertiesPath = path.join(simsDir, 'config.properties')
         
         // Verifica se a pasta existe antes de escrever
