@@ -175,7 +175,7 @@ router.post('/', async (req: Request, res: Response) => {
         const jarName = simulator === 'drone-delivery' ? 'DroneDeliverySim.jar' : 'SharedDroneDeliverySim.jar'
 
         // 1. Sobrescrever o arquivo properties
-        const simsDir = path.resolve(__dirname, '..', '..', 'sims', simFolder)
+        const simsDir = path.resolve(__dirname, '..', '..', '..', 'sims', simFolder)
         const propertiesPath = path.join(simsDir, 'config.properties')
         
         // Verifica se a pasta existe antes de escrever
