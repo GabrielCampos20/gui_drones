@@ -61,13 +61,6 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
         )}
       </div>
 
-      <MetricsBar
-        deliveries={deliveries}
-        drops={drops}
-        rate={displayRate}
-        divisor={displayDiv}
-        arenaStatus={arenaStatus}
-      />
     </div>
   )
 }
@@ -147,36 +140,6 @@ function WarehouseNode({ side, active }: { side: 'left' | 'right'; active: boole
         }}>
         {isLeft ? 'GALPÃO A' : 'GALPÃO B'}
       </span>
-    </div>
-  )
-}
-
-function MetricsBar({ deliveries, drops, rate, divisor, arenaStatus }: {
-  deliveries: number; drops: number; rate: number; divisor: number; arenaStatus: ArenaStatus
-}) {
-  return (
-    <div className="flex items-center justify-around px-6 py-3 border-t"
-      style={{ backgroundColor: '#11151c', borderColor: 'var(--color-border)' }}>
-      <Metric label="Entregas" value={deliveries.toLocaleString('pt-BR')} color="var(--color-success)"      icon="📦" />
-      <Metric label="Quedas"   value={drops.toLocaleString('pt-BR')}      color="var(--color-error)"        icon="💥" />
-      {arenaStatus === 'running' && (
-        <Metric label="Taxa"    value={`~${rate}/s`}                       color="var(--color-cyan-primary)" icon="⚡" />
-      )}
-      {arenaStatus === 'running' && divisor > 1 && (
-        <Metric label="Exibindo" value={`1:${divisor}`}                   color="var(--color-text-muted)"   icon="🎯" />
-      )}
-    </div>
-  )
-}
-
-function Metric({ label, value, color, icon }: { label: string; value: string; color: string; icon: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[9px] font-bold tracking-wider uppercase"
-        style={{ color: 'var(--color-text-muted)' }}>
-        {icon} {label}
-      </span>
-      <span className="text-sm font-bold tabular-nums" style={{ color }}>{value}</span>
     </div>
   )
 }

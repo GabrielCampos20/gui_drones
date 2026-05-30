@@ -50,6 +50,7 @@ export default function useDroneSimulation(executionId: string) {
   const departsSeen = useRef(0)
   const rateHistory = useRef<number[]>([])
   const rafRef = useRef<number | null>(null)
+  const randomCrashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ─── Sampler: taxa de eventos ──────────────────────────────────────────────
   useEffect(() => {
@@ -150,16 +151,49 @@ export default function useDroneSimulation(executionId: string) {
   }, [])
 
   // ─── Crash ─────────────────────────────────────────────────────────────────
+  // Crasha um drone aleatório que esteja com pacote (fase forward)
   const crashDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
-      const idx = prev.findIndex(d => d.status === 'flying' && d.phase === 'forward')
-      if (idx === -1) return prev
+      const candidates = prev
+        .map((d, i) => ({ d, i }))
+        .filter(({ d }) => d.status === 'flying' && d.phase === 'forward')
+      if (candidates.length === 0) return prev
+      const { i } = candidates[Math.floor(Math.random() * candidates.length)]
       const next = [...prev]
-      next[idx] = { ...next[idx], status: 'crashing', crashStart: now, lastTick: now }
+      next[i] = { ...next[i], status: 'crashing', crashStart: now, lastTick: now }
       return next
     })
   }, [])
+
+  // ─── Crashes visuais aleatórios durante a simulação ────────────────────────────
+  // Representa quedas de forma estética durante toda a execução.
+  useEffect(() => {
+    if (arenaStatus !== 'running') {
+      if (randomCrashTimerRef.current !== null) {
+        clearTimeout(randomCrashTimerRef.current)
+        randomCrashTimerRef.current = null
+      }
+      return
+    }
+
+    function scheduleRandomCrash() {
+      // Intervalo aleatório entre 2s e 5s para parecer mais natural
+      const delay = 2000 + Math.random() * 3000
+      randomCrashTimerRef.current = setTimeout(() => {
+        crashDrone()
+        scheduleRandomCrash()
+      }, delay)
+    }
+
+    scheduleRandomCrash()
+    return () => {
+      if (randomCrashTimerRef.current !== null) {
+        clearTimeout(randomCrashTimerRef.current)
+        randomCrashTimerRef.current = null
+      }
+    }
+  }, [arenaStatus, crashDrone])
 
   // ─── Reset ─────────────────────────────────────────────────────────────────
   const resetState = useCallback(() => {
@@ -172,6 +206,10 @@ export default function useDroneSimulation(executionId: string) {
     departsSeen.current = 0
     eventCounter.current = 0
     rateHistory.current = []
+    if (randomCrashTimerRef.current !== null) {
+      clearTimeout(randomCrashTimerRef.current)
+      randomCrashTimerRef.current = null
+    }
   }, [])
 
   // ─── SSE Stream Connection ─────────────────────────────────────────────────
@@ -225,7 +263,6 @@ export default function useDroneSimulation(executionId: string) {
                     case 'package_drop':
                       setArenaStatus(s => s === 'idle' ? 'running' : s)
                       setDrops(n => n + 1)
-                      crashDrone()
                       break
                     case 'simulation_end':
                       setArenaStatus('done')
