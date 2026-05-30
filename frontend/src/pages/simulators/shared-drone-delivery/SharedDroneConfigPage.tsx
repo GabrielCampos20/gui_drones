@@ -146,138 +146,181 @@ export default function SharedDroneConfigPage() {
         }
     }
 
-    const inputClass = "w-full p-2 rounded border bg-[var(--color-bg-primary)] border-[var(--color-border)] text-[var(--color-text-primary)] focus:ring-2 focus:ring-[var(--color-cyan-primary)] outline-none transition-shadow"
-    const labelClass = "block text-sm font-medium mb-1 text-[var(--color-text-secondary)]"
+    const labelClass = "block text-sm font-medium mb-1"
+    const styleLabel = { color: 'var(--color-text-secondary)' }
+    const inputClass = "w-full rounded-md px-3 py-2 bg-(--color-surface) border border-(--color-border) focus:outline-none focus:border-(--color-cyan-primary) text-(--color-text-primary)"
 
     return (
         <PageShell
-            title="Shared Drone Delivery Sim"
-            description="Configure os parâmetros para o simulador de drones com logística compartilhada."
+            title="Configuração de Simulação"
+            description="Shared Drone Delivery Sim — ajuste os parâmetros da simulação abaixo."
         >
-            <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl space-y-6">
-                
-                {/* Cabeçalho */}
-                <div className="flex items-center justify-between p-4 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
-                    <Link to="/" className="text-[var(--color-cyan-primary)] hover:underline flex items-center gap-2">
-                        <ArrowLeft size={16} />
-                        Voltar para Simuladores
-                    </Link>
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="px-6 py-2 bg-[var(--color-cyan-primary)] text-black font-semibold rounded-md hover:bg-cyan-500 disabled:opacity-50 transition-colors"
-                    >
-                        {isSubmitting ? 'Iniciando...' : 'Iniciar Simulação'}
-                    </button>
-                </div>
-
-                {/* Tipo de Simulação */}
-                <div className="p-6 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
-                    <h3 className="text-xl font-bold mb-4 text-[var(--color-text-primary)]">Modo de Simulação</h3>
+            <div
+                className="p-6 rounded-lg border"
+                style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
+            >
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Modo de Simulação */}
                     <div>
-                        <label className={labelClass}>simulation.type</label>
-                        <select {...register('type')} className={inputClass}>
-                            <option value="STATIONARY">Estacionária (STATIONARY)</option>
-                            <option value="TRANSIENT">Transiente (TRANSIENT)</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* Parâmetros Gerais */}
-                <div className="p-6 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
-                    <h3 className="text-xl font-bold mb-4 text-[var(--color-text-primary)]">Parâmetros Gerais</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div>
-                            <label className={labelClass}>queueCapacity</label>
-                            <input type="number" {...register('queueCapacity', intField(40))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>dronesPerWarehouse</label>
-                            <input type="number" {...register('dronesPerWarehouse', intField(20))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>meanServiceTime (minutos)</label>
-                            <input type="number" step="0.1" {...register('meanServiceTime', floatField(0.5))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>pickupTime (minutos)</label>
-                            <input type="number" step="0.1" {...register('pickupTime', floatField(2.0))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>flightTime (minutos)</label>
-                            <input type="number" step="0.1" {...register('flightTime', floatField(75.0))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>transferTime (minutos)</label>
-                            <input type="number" step="0.1" {...register('transferTime', floatField(2.5))} className={inputClass} />
-                        </div>
-                        <div>
-                            <label className={labelClass}>phaseDuration (minutos)</label>
-                            <input type="number" step="0.1" {...register('phaseDuration', floatField(500.0))} className={inputClass} />
+                        <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Modo de Simulação</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className={labelClass} style={styleLabel}>simulation.type</label>
+                                <select {...register('type')} className={inputClass}>
+                                    <option value="STATIONARY">Estacionária (STATIONARY)</option>
+                                    <option value="TRANSIENT">Transiente (TRANSIENT)</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Parâmetros Transientes */}
-                {simulationType === 'TRANSIENT' && (
-                    <div className="p-6 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
-                        <h3 className="text-xl font-bold mb-4 text-[var(--color-text-primary)]">Parâmetros Transientes</h3>
+                    <hr style={{ borderColor: 'var(--color-border)', opacity: 0.3 }} />
+
+                    {/* Parâmetros Gerais */}
+                    <div>
+                        <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Gerais</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                                <label className={labelClass}>simTime (minutos)</label>
-                                <input type="number" step="0.1" {...register('transientSimTime', floatField(6000.0))} className={inputClass} />
+                                <label className={labelClass} style={styleLabel}>queueCapacity</label>
+                                <input type="number" min={1} {...register('queueCapacity', intField(40))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>warmupTime (minutos)</label>
-                                <input type="number" step="0.1" {...register('transientWarmupTime', floatField(0.0))} className={inputClass} />
+                                <label className={labelClass} style={styleLabel}>dronesPerWarehouse</label>
+                                <input type="number" min={1} {...register('dronesPerWarehouse', intField(20))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>meanInterarrival</label>
-                                <input type="number" step="0.01" {...register('transientMeanInterarrival', floatField(2.77))} className={inputClass} />
+                                <label className={labelClass} style={styleLabel}>meanServiceTime (minutos)</label>
+                                <input type="number" step="any" {...register('meanServiceTime', floatField(0.5))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>runs</label>
-                                <input type="number" {...register('transientRuns', intField(1))} className={inputClass} />
+                                <label className={labelClass} style={styleLabel}>pickupTime (minutos)</label>
+                                <input type="number" step="any" {...register('pickupTime', floatField(2.0))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass}>smaWindow</label>
-                                <input type="number" {...register('transientSmaWindow', intField(3))} className={inputClass} />
+                                <label className={labelClass} style={styleLabel}>flightTime (minutos)</label>
+                                <input type="number" step="any" {...register('flightTime', floatField(75.0))} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass} style={styleLabel}>transferTime (minutos)</label>
+                                <input type="number" step="any" {...register('transferTime', floatField(2.5))} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass} style={styleLabel}>phaseDuration (minutos)</label>
+                                <input type="number" step="any" {...register('phaseDuration', floatField(500.0))} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass} style={styleLabel}>backlogThreshold</label>
+                                <input type="number" min={1} {...register('backlogThreshold', intField(10))} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass} style={styleLabel}>migrateBatch</label>
+                                <input type="number" min={1} {...register('migrateBatch', intField(3))} className={inputClass} />
+                            </div>
+                            <div>
+                                <label className={labelClass} style={styleLabel}>baseSeed</label>
+                                <input type="number" min={1} {...register('baseSeed', intField(42))} className={inputClass} />
                             </div>
                         </div>
                     </div>
-                )}
 
-                {/* Parâmetros Estacionários */}
-                {simulationType === 'STATIONARY' && (
-                    <div className="p-6 rounded-lg border bg-[var(--color-card)] border-[var(--color-border)]">
-                        <h3 className="text-xl font-bold mb-4 text-[var(--color-text-primary)]">Parâmetros Estacionários</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                                <label className={labelClass}>simTime (minutos)</label>
-                                <input type="number" step="0.1" {...register('stationarySimTime', floatField(50000.0))} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>warmupTime (minutos)</label>
-                                <input type="number" step="0.1" {...register('stationaryWarmupTime', floatField(10000.0))} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>minAr</label>
-                                <input type="number" step="0.0001" {...register('stationaryMinAr', floatField(0.08))} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass}>maxAr</label>
-                                <input type="number" step="0.0001" {...register('stationaryMaxAr', floatField(0.383157894))} className={inputClass} />
-                                {errors.stationaryMaxAr && <p className="text-red-500 text-sm mt-1">{errors.stationaryMaxAr.message}</p>}
-                            </div>
-                            <div>
-                                <label className={labelClass}>replicas</label>
-                                <input type="number" {...register('stationaryReplicas', intField(500))} className={inputClass} />
+                    <hr style={{ borderColor: 'var(--color-border)', opacity: 0.3 }} />
+
+                    {/* Parâmetros Específicos do Modo */}
+                    {simulationType === 'TRANSIENT' ? (
+                        <div>
+                            <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Transientes</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>simTime (minutos)</label>
+                                    <input type="number" step="any" {...register('transientSimTime', floatField(6000.0))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>warmupTime (minutos)</label>
+                                    <input type="number" step="any" {...register('transientWarmupTime', floatField(0.0))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>meanInterarrival</label>
+                                    <input type="number" step="any" {...register('transientMeanInterarrival', floatField(2.77))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>runs</label>
+                                    <input type="number" min={1} {...register('transientRuns', intField(1))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>smaWindow</label>
+                                    <input type="number" min={1} {...register('transientSmaWindow', intField(3))} className={inputClass} />
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div>
+                            <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Estacionários</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>simTime (minutos)</label>
+                                    <input type="number" step="any" {...register('stationarySimTime', floatField(50000.0))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>warmupTime (minutos)</label>
+                                    <input type="number" step="any" {...register('stationaryWarmupTime', floatField(10000.0))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>minAr</label>
+                                    <input type="number" step="any" {...register('stationaryMinAr', floatField(0.08))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>maxAr</label>
+                                    <input type="number" step="any" {...register('stationaryMaxAr', floatField(0.3831578947368421))} className={inputClass} />
+                                    {errors.stationaryMaxAr && <p className="text-red-500 text-sm mt-1">{errors.stationaryMaxAr.message}</p>}
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>arStep</label>
+                                    <input type="number" step="any" {...register('stationaryArStep', floatField(0.03789473684210526))} className={inputClass} />
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={styleLabel}>replicas</label>
+                                    <input type="number" min={1} {...register('stationaryReplicas', intField(500))} className={inputClass} />
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            </form>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                        <Link
+                            to="/"
+                            className="flex items-center gap-2 px-4 py-2 rounded-md text-sm transition-colors"
+                            style={{
+                                border: '1px solid var(--color-border)',
+                                color: 'var(--color-text-muted)',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-text-secondary)'
+                                e.currentTarget.style.color = 'var(--color-text-secondary)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--color-border)'
+                                e.currentTarget.style.color = 'var(--color-text-muted)'
+                            }}
+                        >
+                            <ArrowLeft size={16} />
+                            Voltar para Simuladores
+                        </Link>
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="px-4 py-2 rounded-md text-sm font-medium transition-opacity"
+                            style={{
+                                backgroundColor: 'var(--color-cyan-primary)',
+                                color: 'var(--color-background)',
+                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                                opacity: isSubmitting ? 0.5 : 1,
+                            }}
+                        >
+                            {isSubmitting ? 'Iniciando...' : 'Iniciar Simulação'}
+                        </button>
+                    </div>
+                </form>
+            </div>
 
             <Modal
                 isOpen={isErrorModalOpen}

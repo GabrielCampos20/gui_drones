@@ -147,7 +147,7 @@ export default function SimulationStatusPage() {
         >
             {/* Live 2D Arena */}
             <div className="max-w-2xl mx-auto">
-                <DroneArena executionId={id ?? ''} />
+                <DroneArena executionId={id ?? ''} simulator={execution?.simulator} />
             </div>
 
             <div
@@ -239,19 +239,39 @@ export default function SimulationStatusPage() {
                             Arquivos gerados
                         </p>
                         <div className="space-y-2">
-                            <ResultFile label="Log" path={execution.logPath} />
-                            <ResultFile label="Tempo de fila" path={execution.queueTimeCsvPath} />
-                            <ResultFile label="Tempo de missão" path={execution.missionTimeCsvPath} />
-                            <ResultFile label="Tempo de voo" path={execution.flightTimeCsvPath} />
-                            <ResultFile label="Prob. de queda" path={execution.dropProbabilityCsvPath} />
+                            {execution.simulator === 'shared-drone-delivery' ? (
+                                <>
+                                    <ResultFile label="Log" path={execution.logPath} />
+                                    <ResultFile label="MMT vs Arrival Rate" path={execution.sharedMmtVsArCsvPath} />
+                                    <ResultFile label="MMT vs Time" path={execution.sharedMmtVsTimeCsvPath} />
+                                </>
+                            ) : (
+                                <>
+                                    <ResultFile label="Log" path={execution.logPath} />
+                                    <ResultFile label="Tempo de fila" path={execution.queueTimeCsvPath} />
+                                    <ResultFile label="Tempo de missão" path={execution.missionTimeCsvPath} />
+                                    <ResultFile label="Tempo de voo" path={execution.flightTimeCsvPath} />
+                                    <ResultFile label="Prob. de queda" path={execution.dropProbabilityCsvPath} />
+                                </>
+                            )}
                         </div>
-                        {!execution.logPath &&
+                        {execution.simulator === 'shared-drone-delivery' ? (
+                            !execution.logPath &&
+                            !execution.sharedMmtVsArCsvPath &&
+                            !execution.sharedMmtVsTimeCsvPath && (
+                                <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
+                                    Nenhum arquivo disponível.
+                                </p>
+                            )
+                        ) : (
+                            !execution.logPath &&
                             !execution.queueTimeCsvPath &&
                             !execution.missionTimeCsvPath && (
                                 <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
                                     Nenhum arquivo disponível.
                                 </p>
-                            )}
+                            )
+                        )}
                     </div>
                 )}
 

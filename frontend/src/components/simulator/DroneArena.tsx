@@ -1,31 +1,31 @@
 import { Warehouse } from 'lucide-react'
-import useDroneSimulation, {
-  WH_LEFT_PCT
-} from './useDroneSimulation'
+import useDroneSimulation from './useDroneSimulation'
 import type { ArenaStatus } from './useDroneSimulation'
 import DroneToken from './DroneToken'
 import './DroneArena.css'
 
 interface DroneArenaProps {
   executionId: string
+  simulator?: string
 }
 
-export default function DroneArena({ executionId }: DroneArenaProps) {
+export default function DroneArena({ executionId, simulator = 'drone-delivery' }: DroneArenaProps) {
   const {
     drones,
     arenaStatus,
     deliveries,
     drops,
-    displayRate,
     displayDiv,
-  } = useDroneSimulation(executionId)
+  } = useDroneSimulation(executionId, simulator)
+
+  const isShared = simulator === 'shared-drone-delivery'
 
   return (
     <div className="w-full rounded-xl border overflow-hidden mb-6"
       style={{ backgroundColor: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
 
       <StatusBar arenaStatus={arenaStatus} displayDiv={displayDiv} />
-      {/*para mudar o tamanho da area de simulação alterar height em pixels*/}
+      
       <div className="relative w-full select-none" style={{ height: 400, backgroundColor: '#0d1117' }}>
         {/* Grade de fundo */}
         <div className="absolute inset-0 pointer-events-none" style={{
@@ -36,15 +36,42 @@ export default function DroneArena({ executionId }: DroneArenaProps) {
           backgroundSize: '40px 40px',
         }} />
 
-        {/* Divisor central */}
-        <div className="absolute left-0 right-0"
-          style={{ top: '50%', height: 1, backgroundColor: 'var(--color-border)', opacity: 0.3 }} />
+        {isShared ? (
+          <>
+            {/* Linhas da rota triangular compartilhada */}
+            <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 1 }}>
+              <line x1="15%" y1="25%" x2="85%" y2="25%" stroke="rgba(0, 194, 255, 0.15)" strokeDasharray="5,5" strokeWidth="1.5" />
+              <line x1="85%" y1="25%" x2="50%" y2="70%" stroke="rgba(0, 194, 255, 0.15)" strokeDasharray="5,5" strokeWidth="1.5" />
+              <line x1="50%" y1="70%" x2="15%" y2="25%" stroke="rgba(0, 194, 255, 0.15)" strokeDasharray="5,5" strokeWidth="1.5" />
+            </svg>
 
-        <RouteLabel top="29%" label="COM PACOTE →" />
-        <RouteLabel top="71%" label="← RETORNO"    />
+            <WarehouseNode name="GALPÃO A" x={15} y={25} active={arenaStatus === 'running'} />
+            <WarehouseNode name="GALPÃO B" x={85} y={25} active={arenaStatus === 'running'} />
+            <WarehouseNode name="GALPÃO C (COMPARTILHADO)" x={50} y={70} active={arenaStatus === 'running'} />
+            
+            {/* Indicador de entregas estéticas no topo do mapa */}
+            {arenaStatus === 'running' && (
+              <div className="absolute top-3 right-4 flex items-center gap-4 text-[10px] font-mono tracking-wider text-text-secondary bg-black/60 px-3 py-1.5 rounded border border-border/50 z-20">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-primary animate-pulse" />
+                  ENTREGAS: {deliveries}
+                </span>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Divisor central */}
+            <div className="absolute left-0 right-0"
+              style={{ top: '50%', height: 1, backgroundColor: 'var(--color-border)', opacity: 0.3 }} />
 
-        <WarehouseNode side="left"  active={arenaStatus === 'running'} />
-        <WarehouseNode side="right" active={arenaStatus === 'running'} />
+            <RouteLabel top="29%" label="COM PACOTE →" />
+            <RouteLabel top="71%" label="← RETORNO"    />
+
+            <WarehouseNode name="GALPÃO A" x={12} y={50} active={arenaStatus === 'running'} />
+            <WarehouseNode name="GALPÃO B" x={88} y={50} active={arenaStatus === 'running'} />
+          </>
+        )}
 
         {drones.map(d => <DroneToken key={d.id} drone={d} />)}
 
@@ -114,11 +141,10 @@ function RouteLabel({ top, label }: { top: string; label: string }) {
   )
 }
 
-function WarehouseNode({ side, active }: { side: 'left' | 'right'; active: boolean }) {
-  const isLeft = side === 'left'
+function WarehouseNode({ name, x, y, active }: { name: string; x: number; y: number; active: boolean }) {
   return (
-    <div className="absolute top-0 bottom-0 flex flex-col items-center justify-center gap-2 pointer-events-none"
-      style={{ [isLeft ? 'left' : 'right']: 0, width: `${WH_LEFT_PCT}%`, zIndex: 4 }}>
+    <div className="absolute flex flex-col items-center justify-center gap-2 pointer-events-none"
+      style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)', zIndex: 4 }}>
       <div className="relative flex items-center justify-center rounded-xl" style={{
         width: 52, height: 52,
         backgroundColor: 'var(--color-surface)',
@@ -132,13 +158,13 @@ function WarehouseNode({ side, active }: { side: 'left' | 'right'; active: boole
             style={{ animation: 'node-breathe 2.5s ease-out infinite' }} />
         )}
       </div>
-      <span className="text-[8px] font-bold tracking-[0.2em] uppercase px-1.5 py-0.5 rounded"
+      <span className="text-[8px] font-bold tracking-[0.2em] uppercase px-1.5 py-0.5 rounded whitespace-nowrap animate-fade-in"
         style={{
           color: 'var(--color-text-muted)',
           backgroundColor: 'var(--color-surface)',
           border: '1px solid var(--color-border)',
         }}>
-        {isLeft ? 'GALPÃO A' : 'GALPÃO B'}
+        {name}
       </span>
     </div>
   )

@@ -18,6 +18,12 @@ export type DronePhase = 'forward' | 'return'
 export type DroneStatus = 'flying' | 'crashing'
 export type ArenaStatus = 'idle' | 'running' | 'done' | 'error'
 
+export interface VisualDroneNode {
+  x: number
+  y: number
+  name: string
+}
+
 export interface VisualDrone {
   id: number
   lane: number
@@ -27,7 +33,15 @@ export interface VisualDrone {
   duration: number
   lastTick: number
   crashStart: number
+  startNode?: VisualDroneNode
+  endNode?: VisualDroneNode
 }
+
+export const SHARED_NODES: VisualDroneNode[] = [
+  { x: 15, y: 25, name: 'GALPÃO A' },
+  { x: 85, y: 25, name: 'GALPÃO B' },
+  { x: 50, y: 70, name: 'GALPÃO C (COMPARTILHADO)' },
+]
 
 // ─── Sampler Helper ──────────────────────────────────────────────────────────
 function calcDivisor(rate: number) { return Math.max(1, Math.round(rate / 5)) }
@@ -37,7 +51,7 @@ let _uid = 0
 const nextUid = () => _uid++
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
-export default function useDroneSimulation(executionId: string) {
+export default function useDroneSimulation(executionId: string, simulator: string = 'drone-delivery') {
   const [drones, setDrones] = useState<VisualDrone[]>([])
   const [arenaStatus, setArenaStatus] = useState<ArenaStatus>('idle')
   const [deliveries, setDeliveries] = useState(0)
@@ -54,6 +68,7 @@ export default function useDroneSimulation(executionId: string) {
 
   // ─── Sampler: taxa de eventos ──────────────────────────────────────────────
   useEffect(() => {
+    if (simulator === 'shared-drone-delivery') return
     const t = setInterval(() => {
       const rate = eventCounter.current
       eventCounter.current = 0
@@ -67,7 +82,7 @@ export default function useDroneSimulation(executionId: string) {
       setDisplayDiv(divisor.current)
     }, 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [simulator])
 
   // ─── RAF loop ──────────────────────────────────────────────────────────────
   const tick = useCallback((now: number) => {
@@ -84,6 +99,9 @@ export default function useDroneSimulation(executionId: string) {
           const crashElapsed = now - d.crashStart
           if (crashElapsed >= CRASH_MS) {
             changed = true
+            if (simulator === 'shared-drone-delivery') {
+              setDrops(n => n + 1)
+            }
             continue
           }
           next.push({ ...d, lastTick: now })
@@ -95,14 +113,34 @@ export default function useDroneSimulation(executionId: string) {
 
         if (newProg >= 1) {
           changed = true
-          if (d.phase === 'forward') {
+          if (simulator === 'shared-drone-delivery') {
+            setDeliveries(n => n + 1)
+            // Se chegou no destino, escolhe outro aleatório diferente do atual
+            const currentEnd = d.endNode!
+            const currentIndex = SHARED_NODES.findIndex(n => n.name === currentEnd.name)
+            
+            const available = [0, 1, 2].filter(idx => idx !== currentIndex)
+            const nextIdx = available[Math.floor(Math.random() * available.length)]
+            const nextEnd = SHARED_NODES[nextIdx]
+
             next.push({
               ...d,
-              phase: 'return',
+              startNode: currentEnd,
+              endNode: nextEnd,
               progress: 0,
-              duration: RETURN_MS,
-              lastTick: now,
+              duration: 2500 + Math.random() * 1500, // entre 2.5s e 4s
+              lastTick: now
             })
+          } else {
+            if (d.phase === 'forward') {
+              next.push({
+                ...d,
+                phase: 'return',
+                progress: 0,
+                duration: RETURN_MS,
+                lastTick: now,
+              })
+            }
           }
         } else {
           next.push({ ...d, progress: newProg, lastTick: now })
@@ -114,7 +152,7 @@ export default function useDroneSimulation(executionId: string) {
     })
 
     rafRef.current = requestAnimationFrame(tick)
-  }, [])
+  }, [simulator])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(tick)
@@ -127,37 +165,59 @@ export default function useDroneSimulation(executionId: string) {
   const spawnDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
-      const usedLanes = new Set(
-        prev.filter(d => d.phase === 'forward' && d.status === 'flying').map(d => d.lane)
-      )
-      let lane = -1
-      for (let i = 0; i < LANES; i++) {
-        if (!usedLanes.has(i)) { lane = i; break }
-      }
-      if (lane === -1) return prev
+      if (simulator === 'shared-drone-delivery') {
+        const startIdx = Math.floor(Math.random() * 3)
+        const available = [0, 1, 2].filter(idx => idx !== startIdx)
+        const endIdx = available[Math.floor(Math.random() * available.length)]
 
-      const newDrone: VisualDrone = {
-        id: nextUid(),
-        lane,
-        phase: 'forward',
-        status: 'flying',
-        progress: 0,
-        duration: FORWARD_MS,
-        lastTick: now,
-        crashStart: 0,
+        const startNode = SHARED_NODES[startIdx]
+        const endNode = SHARED_NODES[endIdx]
+
+        const newDrone: VisualDrone = {
+          id: nextUid(),
+          lane: Math.floor(Math.random() * LANES),
+          phase: 'forward',
+          status: 'flying',
+          progress: 0,
+          duration: 2500 + Math.random() * 1500,
+          lastTick: now,
+          crashStart: 0,
+          startNode,
+          endNode,
+        }
+        return [...prev, newDrone]
+      } else {
+        const usedLanes = new Set(
+          prev.filter(d => d.phase === 'forward' && d.status === 'flying').map(d => d.lane)
+        )
+        let lane = -1
+        for (let i = 0; i < LANES; i++) {
+          if (!usedLanes.has(i)) { lane = i; break }
+        }
+        if (lane === -1) return prev
+
+        const newDrone: VisualDrone = {
+          id: nextUid(),
+          lane,
+          phase: 'forward',
+          status: 'flying',
+          progress: 0,
+          duration: FORWARD_MS,
+          lastTick: now,
+          crashStart: 0,
+        }
+        return [...prev, newDrone]
       }
-      return [...prev, newDrone]
     })
-  }, [])
+  }, [simulator])
 
   // ─── Crash ─────────────────────────────────────────────────────────────────
-  // Crasha um drone aleatório que esteja com pacote (fase forward)
   const crashDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
       const candidates = prev
         .map((d, i) => ({ d, i }))
-        .filter(({ d }) => d.status === 'flying' && d.phase === 'forward')
+        .filter(({ d }) => d.status === 'flying')
       if (candidates.length === 0) return prev
       const { i } = candidates[Math.floor(Math.random() * candidates.length)]
       const next = [...prev]
@@ -166,10 +226,30 @@ export default function useDroneSimulation(executionId: string) {
     })
   }, [])
 
-  // ─── Crashes visuais aleatórios durante a simulação ────────────────────────────
-  // Representa quedas de forma estética durante toda a execução.
+  // ─── Auto-spawner para simulador compartilhado ──────────────────────────────
   useEffect(() => {
-    if (arenaStatus !== 'running') {
+    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
+
+    // Spawn inicial de alguns drones para o mapa não começar vazio
+    for (let i = 0; i < 4; i++) {
+      setTimeout(spawnDrone, i * 400)
+    }
+
+    const interval = setInterval(() => {
+      setDrones(prev => {
+        if (prev.length < 8) {
+          setTimeout(spawnDrone, 0)
+        }
+        return prev
+      })
+    }, 1500)
+
+    return () => clearInterval(interval)
+  }, [simulator, arenaStatus, spawnDrone])
+
+  // ─── Crashes visuais aleatórios durante a simulação ─────────────────────────
+  useEffect(() => {
+    if (arenaStatus !== 'running' || simulator === 'shared-drone-delivery') {
       if (randomCrashTimerRef.current !== null) {
         clearTimeout(randomCrashTimerRef.current)
         randomCrashTimerRef.current = null
@@ -178,8 +258,7 @@ export default function useDroneSimulation(executionId: string) {
     }
 
     function scheduleRandomCrash() {
-      // Intervalo aleatório entre 2s e 5s para parecer mais natural
-      const delay = 2000 + Math.random() * 3000
+      const delay = 3000 + Math.random() * 4000
       randomCrashTimerRef.current = setTimeout(() => {
         crashDrone()
         scheduleRandomCrash()
@@ -251,18 +330,24 @@ export default function useDroneSimulation(executionId: string) {
                       setArenaStatus('running')
                       break
                     case 'drone_depart':
-                      setArenaStatus(s => s === 'idle' ? 'running' : s)
-                      eventCounter.current++
-                      departsSeen.current++
-                      if (departsSeen.current % divisor.current === 0) spawnDrone()
+                      if (simulator !== 'shared-drone-delivery') {
+                        setArenaStatus(s => s === 'idle' ? 'running' : s)
+                        eventCounter.current++
+                        departsSeen.current++
+                        if (departsSeen.current % divisor.current === 0) spawnDrone()
+                      }
                       break
                     case 'drone_arrive':
-                      setArenaStatus(s => s === 'idle' ? 'running' : s)
-                      setDeliveries(n => n + 1)
+                      if (simulator !== 'shared-drone-delivery') {
+                        setArenaStatus(s => s === 'idle' ? 'running' : s)
+                        setDeliveries(n => n + 1)
+                      }
                       break
                     case 'package_drop':
-                      setArenaStatus(s => s === 'idle' ? 'running' : s)
-                      setDrops(n => n + 1)
+                      if (simulator !== 'shared-drone-delivery') {
+                        setArenaStatus(s => s === 'idle' ? 'running' : s)
+                        setDrops(n => n + 1)
+                      }
                       break
                     case 'simulation_end':
                       setArenaStatus('done')
@@ -280,7 +365,7 @@ export default function useDroneSimulation(executionId: string) {
       })()
 
     return () => ctrl.abort()
-  }, [executionId, spawnDrone, crashDrone, resetState])
+  }, [executionId, simulator, spawnDrone, crashDrone, resetState])
 
   return {
     drones,
