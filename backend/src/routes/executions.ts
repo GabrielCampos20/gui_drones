@@ -224,30 +224,33 @@ router.post('/', async (req: Request, res: Response) => {
 
         // 4. Iniciar processamento em background
         const jarPath = path.join(simsDir, jarName)
-        const child = spawn('java', ['-jar', jarPath], { cwd: simsDir })
+        
+        // A JVM sem TTY bufferiza System.err internamente até ~8KB antes de liberar
+        // ao pipe do Node. Isso faz as mensagens de queda chegarem todas de uma vez no final.
+        // Solução: executar via shell com "2>&1" para unir stderr no stdout — assim
+        // ambos os streams passam pelo mesmo pipe sem buffer da JVM.
+        const child = spawn(
+            `java -jar "${jarPath}" 2>&1`,
+            [],
+            { cwd: simsDir, shell: true, stdio: ['ignore', 'pipe', 'ignore'] }
+        )
         
         simState.currentProcess = child
 
         let stdoutBuffer = ''
-        let stderrBuffer = ''
 
-        child.stdout.on('data', (data) => {
+        function processLine(line: string) {
+            parseStdoutLine(line)
+            parseStderrLine(line)
+        }
+
+        child.stdout!.on('data', (data) => {
             const chunk = data.toString()
             stdoutBuffer += chunk
             const lines = stdoutBuffer.split('\n')
             stdoutBuffer = lines.pop() ?? ''
             for (const line of lines) {
-                parseStdoutLine(line)
-            }
-        })
-
-        child.stderr.on('data', (data) => {
-            const chunk = data.toString()
-            stderrBuffer += chunk
-            const lines = stderrBuffer.split('\n')
-            stderrBuffer = lines.pop() ?? ''
-            for (const line of lines) {
-                parseStderrLine(line)
+                processLine(line)
             }
         })
 
