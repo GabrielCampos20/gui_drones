@@ -89,7 +89,7 @@ router.get('/stream', (req: Request, res: Response) => {
     res.write('data: {"type":"connected"}\n\n')
 
     // If no simulation is running, send that info
-    if (!isSimulationRunning) {
+    if (!simState.isRunning) {
         res.write('data: {"type":"idle"}\n\n')
     }
 

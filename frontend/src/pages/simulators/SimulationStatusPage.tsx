@@ -4,12 +4,9 @@ import { CheckCircle, AlertCircle, FileText, Clock } from 'lucide-react'
 import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
 import DroneArena from '../../components/simulator/DroneArena'
-<<<<<<< HEAD
 import SimulationPlots from '../../components/simulator/SimulationPlots'
-=======
 import BackLink from '../../components/ui/BackLink'
 import DangerButton from '../../components/ui/DangerButton'
->>>>>>> joao-marcos
 import {
     executionsApi,
     simulatorLabel,
