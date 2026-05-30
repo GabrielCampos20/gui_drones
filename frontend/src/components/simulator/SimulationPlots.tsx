@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Papa from 'papaparse'
-import MatlabChart from './MatlabChart'
+import SimulationChart from './SimulationChart'
 import type { Execution } from '../../services/executions'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000'
@@ -81,7 +81,7 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                             entry[lineKey] = mean
                         }
 
-                        const sortedData = Array.from(dataMap.values()).sort((a, b) => a.AR - b.AR)
+                        const sortedData = Array.from(dataMap.values()).sort((a: any, b: any) => a.AR - b.AR)
                         const lines = Array.from(linesSet).sort() // Opcional: ordenar pelos drones
                         
                         if (sortedData.length > 0) {
@@ -142,14 +142,13 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                         <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                             Tempo de Fila
                         </h4>
-                        <MatlabChart 
+                        <SimulationChart 
                             data={queueData.data} 
                             lines={queueData.lines}
                             xAxisKey="AR"
                             xAxisLabel="Arrival Rate (AR)"
                             yAxisLabel="Mean Queue Time"
                             yAxisUnit="ms"
-                            legendPosition="InsideNE"
                         />
                     </div>
                 )}
@@ -160,14 +159,13 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                         <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                             Tempo de Missão
                         </h4>
-                        <MatlabChart 
+                        <SimulationChart 
                             data={missionData.data} 
                             lines={missionData.lines}
                             xAxisKey="AR"
                             xAxisLabel="Arrival Rate (AR)"
                             yAxisLabel="Mean Mission Time"
                             yAxisUnit="ms"
-                            legendPosition="InsideNE"
                         />
                     </div>
                 )}
@@ -178,14 +176,13 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                         <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                             Tempo de Voo
                         </h4>
-                        <MatlabChart 
+                        <SimulationChart 
                             data={flightData.data} 
                             lines={flightData.lines}
                             xAxisKey="AR"
                             xAxisLabel="Arrival Rate (AR)"
                             yAxisLabel="Mean Flight Time"
                             yAxisUnit="ms"
-                            legendPosition="InsideNE"
                         />
                     </div>
                 )}
@@ -196,14 +193,13 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                         <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--color-text-secondary)' }}>
                             Probabilidade de Queda
                         </h4>
-                        <MatlabChart 
+                        <SimulationChart 
                             data={dropData.data} 
                             lines={dropData.lines}
                             xAxisKey="AR"
                             xAxisLabel="Arrival Rate (AR)"
                             yAxisLabel="Drop Probability"
                             yAxisUnit="%"
-                            legendPosition="InsideSE" // O Java usa InsideSE para o DropLinePlot
                         />
                     </div>
                 )}
