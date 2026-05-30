@@ -5,6 +5,7 @@ import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
 import DroneArena from '../../components/simulator/DroneArena'
 import SimulationPlots from '../../components/simulator/SimulationPlots'
+import SharedSimulationPlots from '../../components/simulator/SharedSimulationPlots'
 import BackLink from '../../components/ui/BackLink'
 import DangerButton from '../../components/ui/DangerButton'
 import {
@@ -132,7 +133,7 @@ export default function SimulationStatusPage() {
         ? Math.floor((Date.now() - new Date(execution.startedAt).getTime()) / 1000)
         : elapsed
 
-    const isError = !isDone && simulationElapsedSec > 300 // mais de 5 min
+    const isError = !isDone && simulationElapsedSec > 300 && execution?.simulator !== 'shared-drone-delivery' // mais de 5 min (exceto para simulador compartilhado)
 
     // ─── Título dinâmico (item 5) ───────────────────────────────────────────────
 
@@ -274,7 +275,15 @@ export default function SimulationStatusPage() {
                 )}
 
                 {/* Gráficos Gerados Dinamicamente */}
-                {isDone && execution && <SimulationPlots execution={execution} />}
+                {isDone && execution && (
+                    <div className="mt-8">
+                        {execution.simulator === 'shared-drone-delivery' ? (
+                            <SharedSimulationPlots execution={execution} />
+                        ) : (
+                            <SimulationPlots execution={execution} />
+                        )}
+                    </div>
+                )}
 
                 {/* Ações */}
                 <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>

@@ -204,16 +204,24 @@ router.post('/', async (req: Request, res: Response) => {
         }
         fs.writeFileSync(propertiesPath, propertiesContent, 'utf-8')
 
+        const executionData: any = {
+            simulator,
+            propertiesContent,
+        }
+
+        if (simulator === 'drone-delivery') {
+            executionData.queueTimeCsvPath = `${simFolder}/queue_time.csv`
+            executionData.missionTimeCsvPath = `${simFolder}/mission_time.csv`
+            executionData.flightTimeCsvPath = `${simFolder}/flight_time.csv`
+            executionData.dropProbabilityCsvPath = `${simFolder}/drop_probability.csv`
+        } else if (simulator === 'shared-drone-delivery') {
+            executionData.sharedMmtVsArCsvPath = `${simFolder}/csv/mmt_vs_ar.csv`
+            executionData.sharedMmtVsTimeCsvPath = `${simFolder}/csv/mmt_vs_time.csv`
+        }
+
         // 2. Criar execução no banco com caminhos preenchidos
         const execution = await prisma.execution.create({
-            data: {
-                simulator,
-                propertiesContent,
-                queueTimeCsvPath: `${simFolder}/queue_time.csv`,
-                missionTimeCsvPath: `${simFolder}/mission_time.csv`,
-                flightTimeCsvPath: `${simFolder}/flight_time.csv`,
-                dropProbabilityCsvPath: `${simFolder}/drop_probability.csv`
-            },
+            data: executionData,
         })
 
         // 3. Responder imediatamente ao front-end

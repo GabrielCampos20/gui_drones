@@ -12,6 +12,8 @@ export type Execution = {
     missionTimeCsvPath: string | null
     flightTimeCsvPath: string | null
     dropProbabilityCsvPath: string | null
+    sharedMmtVsArCsvPath?: string | null
+    sharedMmtVsTimeCsvPath?: string | null
     userId: string | null
 }
 
