@@ -114,8 +114,6 @@ export default function SimulationChart({
             >
                 <ResponsiveContainer width="100%" height={500}>
                     <LineChart data={data} margin={{ top: 10, right: 30, left: 40, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                        
                         <XAxis 
                             xAxisId="bottom"
                             type="number"
@@ -123,6 +121,7 @@ export default function SimulationChart({
                             ticks={xTicks}
                             dataKey={xAxisKey} 
                             stroke="#334155" 
+                            padding={{ left: 20, right: 20 }}
                             tick={{ fill: '#334155', fontSize: 14 }}
                             tickFormatter={(val) => formatValue(val, xDecimals)}
                             label={{ 
@@ -139,7 +138,9 @@ export default function SimulationChart({
                             yAxisId="left"
                             type="number"
                             domain={['auto', 'auto']}
+                            tickCount={8}
                             stroke="#334155" 
+                            padding={{ bottom: 20, top: 20 }}
                             tick={{ fill: '#334155', fontSize: 14 }}
                             tickFormatter={(val) => formatValue(val, yDecimals)}
                             label={{ 
@@ -161,8 +162,10 @@ export default function SimulationChart({
                         />
                         
                         <Legend 
+                            layout="horizontal"
                             verticalAlign="bottom" 
-                            height={36} 
+                            align="center"
+                            height={70}
                             wrapperStyle={{ paddingTop: '20px' }}
                             formatter={(value) => <span style={{ color: '#334155', fontWeight: 500, fontSize: 14 }}>{value}</span>}
                         />
