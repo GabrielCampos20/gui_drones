@@ -80,7 +80,7 @@ export default function DroneToken({ drone }: DroneTokenProps) {
         zIndex: isCrashing ? 6 : isForward ? 5 : 3,
       }}>
       <div className="relative">
-        <DroneIcon phase={drone.phase} status={drone.status} />
+        <DroneIcon phase={(drone.sharedType ? drone.sharedType === 'delivery' : isForward) ? 'forward' : 'return'} status={drone.status} />
 
         {isCrashing && (
           <div className="absolute -inset-1 rounded-full border border-dashed border-red-500/50 animate-ping" />

@@ -16,6 +16,7 @@ import os
 import signal
 import time
 import shutil
+import socket
 
 # ─── Detecção de SO ───────────────────────────────────────────────────────────
 
@@ -175,10 +176,21 @@ def wait_for_postgres(max_attempts: int = 15) -> bool:
         time.sleep(2)
     return False
 
+def is_postgres_port_open() -> bool:
+    """Verifica se a porta 5432 já está aberta localmente (PostgreSQL nativo rodando)."""
+    try:
+        with socket.create_connection(("localhost", 5432), timeout=1):
+            return True
+    except OSError:
+        return False
+
 # ─── Verificações de dependência ──────────────────────────────────────────────
 
 def check_deps():
-    deps = {"docker-compose ou docker": DC, "npm": NPM, "npx": NPX}
+    deps = {"npm": NPM, "npx": NPX}
+    if not is_postgres_port_open():
+        deps["docker-compose ou docker"] = DC
+    
     missing = []
     for name, path in deps.items():
         if not shutil.which(path):
@@ -209,16 +221,19 @@ def main():
     check_deps()
 
     # 1. Docker — banco de dados
-    info("Subindo o banco de dados (Docker)...")
-    ok = run_step("Docker DB", [DC, "up", "-d", "db"], cwd=ROOT)
-    if not ok:
-        error("Não foi possível subir o banco. Verifique se o Docker está rodando.")
-        sys.exit(1)
+    if is_postgres_port_open():
+        success("PostgreSQL local nativo detectado na porta 5432. Pulando inicialização do Docker.")
+    else:
+        info("Subindo o banco de dados (Docker)...")
+        ok = run_step("Docker DB", [DC, "up", "-d", "db"], cwd=ROOT)
+        if not ok:
+            error("Não foi possível subir o banco. Verifique se o Docker está rodando ou se tem um PostgreSQL nativo ativo.")
+            sys.exit(1)
 
-    # 2. Aguarda PostgreSQL
-    if not wait_for_postgres():
-        error("PostgreSQL não respondeu a tempo. Verifique os logs: docker-compose logs db")
-        sys.exit(1)
+        # 2. Aguarda PostgreSQL
+        if not wait_for_postgres():
+            error("PostgreSQL não respondeu a tempo. Verifique os logs: docker-compose logs db")
+            sys.exit(1)
 
     # 3. Prisma generate
     ok = run_step("Prisma Generate", [NPX, "prisma", "generate"], cwd=BACKEND_DIR)

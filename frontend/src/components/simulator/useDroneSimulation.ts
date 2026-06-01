@@ -17,6 +17,7 @@ export const RET_TOP = 60; export const RET_BOT = 90
 export type DronePhase = 'forward' | 'return'
 export type DroneStatus = 'flying' | 'crashing'
 export type ArenaStatus = 'idle' | 'running' | 'done' | 'error'
+export type SharedDroneType = 'delivery' | 'return' | 'migration'
 
 export interface VisualDroneNode {
   x: number
@@ -35,13 +36,36 @@ export interface VisualDrone {
   crashStart: number
   startNode?: VisualDroneNode
   endNode?: VisualDroneNode
+  sharedType?: SharedDroneType
 }
 
 export const SHARED_NODES_CONFIG = {
-  GALPAO_A: { x: 15, y: 25, name: 'GALPÃO A' },
-  DESTINO_A: { x: 15, y: 75, name: 'DESTINO A' },
-  GALPAO_B: { x: 85, y: 25, name: 'GALPÃO B' },
-  DESTINO_B: { x: 85, y: 75, name: 'DESTINO B' },
+  // Posição visual dos ícones (galpões no topo, destinos na parte inferior)
+  GALPAO_A:  { x: 15, y: 12, name: 'GALPÃO A' },
+  DESTINO_A: { x: 15, y: 88, name: 'DESTINO A' },
+  GALPAO_B:  { x: 85, y: 12, name: 'GALPÃO B' },
+  DESTINO_B: { x: 85, y: 88, name: 'DESTINO B' },
+}
+
+// Rotas de voo com offset para evitar sobreposição visual
+// Ida (com pacote): ligeiramente à esquerda do eixo do galpão
+// Volta (sem pacote): ligeiramente à direita do eixo do galpão
+export const SHARED_ROUTES = {
+  // Sistema A (Galpão→Destino): X=12 descendo, X=18 subindo
+  A_DELIVERY_START: { x: 12, y: 12, name: 'GALPÃO A' },
+  A_DELIVERY_END:   { x: 12, y: 88, name: 'DESTINO A' },
+  A_RETURN_START:   { x: 18, y: 88, name: 'DESTINO A' },
+  A_RETURN_END:     { x: 18, y: 12, name: 'GALPÃO A' },
+  // Sistema B (Galpão→Destino): X=82 descendo, X=88 subindo
+  B_DELIVERY_START: { x: 88, y: 12, name: 'GALPÃO B' },
+  B_DELIVERY_END:   { x: 88, y: 88, name: 'DESTINO B' },
+  B_RETURN_START:   { x: 82, y: 88, name: 'DESTINO B' },
+  B_RETURN_END:     { x: 82, y: 12, name: 'GALPÃO B' },
+  // Migração horizontal (entre galpões, próximo ao topo)
+  MIG_A_TO_B_START: { x: 15, y: 12, name: 'GALPÃO A' },
+  MIG_A_TO_B_END:   { x: 85, y: 12, name: 'GALPÃO B' },
+  MIG_B_TO_A_START: { x: 85, y: 12, name: 'GALPÃO B' },
+  MIG_B_TO_A_END:   { x: 15, y: 12, name: 'GALPÃO A' },
 }
 
 // ─── Sampler Helper ──────────────────────────────────────────────────────────
@@ -60,9 +84,12 @@ export default function useDroneSimulation(executionId: string, simulator: strin
   const [displayRate, setDisplayRate] = useState(0)
   const [displayDiv, setDisplayDiv] = useState(1)
 
-  // Estados específicos do simulador compartilhado
-  const [sharedPhase, setSharedPhase] = useState<1 | 2>(1)
-  const [sharedState, setSharedState] = useState<'receiving' | 'migrating'>('receiving')
+  // Estados reais da lógica de compartilhamento
+  const [sharedPhase, setSharedPhase] = useState<1 | 2>(1) // 1 = Demanda em A, 2 = Demanda em B
+  const [dronesInA, setDronesInA] = useState(20)
+  const [dronesInB, setDronesInB] = useState(20)
+  const [queueA, setQueueA] = useState(0)
+  const [queueB, setQueueB] = useState(0)
 
   const eventCounter = useRef(0)
   const divisor = useRef(1)
@@ -119,23 +146,30 @@ export default function useDroneSimulation(executionId: string, simulator: strin
         if (newProg >= 1) {
           changed = true
           if (simulator === 'shared-drone-delivery') {
-            // Se chegou ao fim do voo
-            const isDeliveryForward = d.startNode?.name.startsWith('GALPÃO') && d.endNode?.name.startsWith('DESTINO')
-            
-            if (isDeliveryForward) {
-              // Chegou no Destino: faz retorno ao galpão de origem
+            if (d.sharedType === 'delivery') {
+              // Chegou no Destino: inicia retorno pela pista oposta (sem sobreposição)
               setDeliveries(n => n + 1)
+              const isSystemA = d.endNode?.name === 'DESTINO A'
               next.push({
                 ...d,
-                startNode: d.endNode,
-                endNode: d.startNode,
+                startNode: isSystemA ? SHARED_ROUTES.A_RETURN_START : SHARED_ROUTES.B_RETURN_START,
+                endNode:   isSystemA ? SHARED_ROUTES.A_RETURN_END   : SHARED_ROUTES.B_RETURN_END,
+                sharedType: 'return',
                 phase: 'return',
                 progress: 0,
                 duration: RETURN_MS,
                 lastTick: now
               })
+            } else if (d.sharedType === 'migration') {
+              // Drone migrado chegou no galpão destino
+              if (d.endNode?.name === 'GALPÃO A') {
+                setDronesInA(n => n + 1)
+              } else {
+                setDronesInB(n => n + 1)
+              }
+              // O drone some da rota de voo horizontal e entra no pool de drones do galpão
             } else {
-              // Se for voo de retorno ou migração horizontal, o drone apenas pousa/desaparece no destino
+              // Retornou ao galpão de origem: pousa e entra no pool ocioso
             }
           } else {
             if (d.phase === 'forward') {
@@ -167,48 +201,156 @@ export default function useDroneSimulation(executionId: string, simulator: strin
     }
   }, [tick])
 
-  // ─── Spawn ─────────────────────────────────────────────────────────────────
-  const spawnDroneShared = useCallback((type: 'delivery' | 'migration') => {
-    const now = performance.now()
-    setDrones(prev => {
-      let startNode: VisualDroneNode
-      let endNode: VisualDroneNode
+  // ─── Alternância de Demanda (Fases a cada 18s para simulação fluida) ──────────
+  useEffect(() => {
+    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
 
-      if (type === 'delivery') {
-        if (sharedPhase === 1) {
-          startNode = SHARED_NODES_CONFIG.GALPAO_A
-          endNode = SHARED_NODES_CONFIG.DESTINO_A
+    const phaseTimer = setInterval(() => {
+      setSharedPhase(curr => {
+        const nextPhase = curr === 1 ? 2 : 1
+        // Ao trocar de fase: zera fila do galpão que ficou ocioso
+        // e injeta uma rajada de demanda no novo galpão ativo
+        // (simula o acúmulo de pedidos durante o período ocioso)
+        if (nextPhase === 1) {
+          setQueueB(0)
+          setQueueA(18) // rajada de demanda — fila começa cheia ao assumir
         } else {
-          startNode = SHARED_NODES_CONFIG.GALPAO_B
-          endNode = SHARED_NODES_CONFIG.DESTINO_B
+          setQueueA(0)
+          setQueueB(18)
         }
+        return nextPhase
+      })
+    }, 18000)
+
+    return () => clearInterval(phaseTimer)
+  }, [simulator, arenaStatus])
+
+  // ─── Gerador de Pedidos na Fila ─────────────────────────────────────────────
+  useEffect(() => {
+    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
+
+    const queueTimer = setInterval(() => {
+      if (sharedPhase === 1) {
+        setQueueA(q => Math.min(q + Math.floor(Math.random() * 3) + 1, 35))
       } else {
-        // migration
+        setQueueB(q => Math.min(q + Math.floor(Math.random() * 3) + 1, 35))
+      }
+    }, 1200)
+
+    return () => clearInterval(queueTimer)
+  }, [simulator, arenaStatus, sharedPhase])
+
+  // ─── Despachador de Drones (Lógica de Voo e Migração) ──────────────────────
+  useEffect(() => {
+    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
+
+    const dispatchTimer = setInterval(() => { // 800ms: mais lento para deixar a fila acumular e migração ocorrer
+      const now = performance.now()
+
+      setDrones(prev => {
+        // Conta voos verticais ativos em cada lado
+        const activeA = prev.filter(d => 
+          d.sharedType !== 'migration' && 
+          (d.startNode?.name.includes('A') || d.endNode?.name.includes('A'))
+        ).length
+
+        const activeB = prev.filter(d => 
+          d.sharedType !== 'migration' && 
+          (d.startNode?.name.includes('B') || d.endNode?.name.includes('B'))
+        ).length
+
+        // Conta migrações ativas
+        const migratingBtoA = prev.some(d => d.sharedType === 'migration' && d.endNode?.name === 'GALPÃO A')
+        const migratingAtoB = prev.some(d => d.sharedType === 'migration' && d.endNode?.name === 'GALPÃO B')
+
+        const nextDrones = [...prev]
+
         if (sharedPhase === 1) {
-          startNode = SHARED_NODES_CONFIG.GALPAO_A
-          endNode = SHARED_NODES_CONFIG.GALPAO_B
+          // ─── SISTEMA A (Ativo) ───
+          // Despacha drone de entrega se tiver demanda na fila e drones físicos ociosos no galpão
+          const idleDronesA = dronesInA - activeA
+          if (queueA > 0 && idleDronesA > 0 && activeA < 12) {
+            setQueueA(q => Math.max(0, q - 1))
+            nextDrones.push({
+              id: nextUid(),
+              lane: Math.floor(Math.random() * LANES),
+              phase: 'forward',
+              status: 'flying',
+              progress: 0,
+              duration: 2500 + Math.random() * 1000,
+              lastTick: now,
+              crashStart: 0,
+              startNode: SHARED_ROUTES.A_DELIVERY_START,
+              endNode: SHARED_ROUTES.A_DELIVERY_END,
+              sharedType: 'delivery',
+            })
+          }
+
+          // ─── MIGRAÇÃO B -> A ───
+          // Regra: fila > 5 AND galpão B tem excedente (> 5 drones) AND um drone por vez
+          if (queueA > 5 && dronesInB > 5 && !migratingBtoA) {
+            setDronesInB(n => n - 1)
+            nextDrones.push({
+              id: nextUid(),
+              lane: Math.floor(Math.random() * LANES),
+              phase: 'forward',
+              status: 'flying',
+              progress: 0,
+              duration: 3500, // 2.5 min de viagem escalonados
+              lastTick: now,
+              crashStart: 0,
+              startNode: SHARED_ROUTES.MIG_B_TO_A_START,
+              endNode: SHARED_ROUTES.MIG_B_TO_A_END,
+              sharedType: 'migration',
+            })
+          }
         } else {
-          startNode = SHARED_NODES_CONFIG.GALPAO_B
-          endNode = SHARED_NODES_CONFIG.GALPAO_A
+          // ─── SISTEMA B (Ativo) ───
+          const idleDronesB = dronesInB - activeB
+          if (queueB > 0 && idleDronesB > 0 && activeB < 12) {
+            setQueueB(q => Math.max(0, q - 1))
+            nextDrones.push({
+              id: nextUid(),
+              lane: Math.floor(Math.random() * LANES),
+              phase: 'forward',
+              status: 'flying',
+              progress: 0,
+              duration: 2500 + Math.random() * 1000,
+              lastTick: now,
+              crashStart: 0,
+              startNode: SHARED_ROUTES.B_DELIVERY_START,
+              endNode: SHARED_ROUTES.B_DELIVERY_END,
+              sharedType: 'delivery',
+            })
+          }
+
+          // ─── MIGRAÇÃO A -> B ───
+          if (queueB > 5 && dronesInA > 5 && !migratingAtoB) {
+            setDronesInA(n => n - 1)
+            nextDrones.push({
+              id: nextUid(),
+              lane: Math.floor(Math.random() * LANES),
+              phase: 'forward',
+              status: 'flying',
+              progress: 0,
+              duration: 3500,
+              lastTick: now,
+              crashStart: 0,
+              startNode: SHARED_ROUTES.MIG_A_TO_B_START,
+              endNode: SHARED_ROUTES.MIG_A_TO_B_END,
+              sharedType: 'migration',
+            })
+          }
         }
-      }
 
-      const newDrone: VisualDrone = {
-        id: nextUid(),
-        lane: Math.floor(Math.random() * LANES),
-        phase: 'forward',
-        status: 'flying',
-        progress: 0,
-        duration: type === 'migration' ? 4000 : 2500 + Math.random() * 1000,
-        lastTick: now,
-        crashStart: 0,
-        startNode,
-        endNode,
-      }
-      return [...prev, newDrone]
-    })
-  }, [sharedPhase])
+        return nextDrones
+      })
+    }, 800)
 
+    return () => clearInterval(dispatchTimer)
+  }, [simulator, arenaStatus, sharedPhase, dronesInA, dronesInB, queueA, queueB])
+
+  // ─── Spawn do simulador básico ──────────────────────────────────────────────
   const spawnDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
@@ -235,7 +377,7 @@ export default function useDroneSimulation(executionId: string, simulator: strin
     })
   }, [])
 
-  // ─── Crash ─────────────────────────────────────────────────────────────────
+  // ─── Crash (apenas simulador básico) ────────────────────────────────────────
   const crashDrone = useCallback(() => {
     const now = performance.now()
     setDrones(prev => {
@@ -249,58 +391,6 @@ export default function useDroneSimulation(executionId: string, simulator: strin
       return next
     })
   }, [])
-
-  // ─── Ciclo de fases do simulador compartilhado ─────────────────────────────
-  useEffect(() => {
-    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
-
-    const interval = setInterval(() => {
-      setSharedState(curr => {
-        if (curr === 'receiving') {
-          return 'migrating'
-        } else {
-          setSharedPhase(p => p === 1 ? 2 : 1)
-          return 'receiving'
-        }
-      })
-    }, 10000) // Troca o modo a cada 10 segundos
-
-    return () => clearInterval(interval)
-  }, [simulator, arenaStatus])
-
-  // ─── Auto-spawner do simulador compartilhado ───────────────────────────────
-  useEffect(() => {
-    if (simulator !== 'shared-drone-delivery' || arenaStatus !== 'running') return
-
-    // Spawna entregas normais continuamente
-    const deliveryInterval = setInterval(() => {
-      setDrones(prev => {
-        const deliveriesCount = prev.filter(d => d.endNode?.name.startsWith('DESTINO')).length
-        if (deliveriesCount < 4) {
-          setTimeout(() => spawnDroneShared('delivery'), 0)
-        }
-        return prev
-      })
-    }, 1200)
-
-    // Spawna migrações se o estado for 'migrating'
-    const migrationInterval = setInterval(() => {
-      if (sharedState === 'migrating') {
-        setDrones(prev => {
-          const migrationCount = prev.filter(d => d.endNode?.name.startsWith('GALPÃO') && d.startNode?.name.startsWith('GALPÃO')).length
-          if (migrationCount < 3) {
-            setTimeout(() => spawnDroneShared('migration'), Math.random() * 500)
-          }
-          return prev
-        })
-      }
-    }, 2000)
-
-    return () => {
-      clearInterval(deliveryInterval)
-      clearInterval(migrationInterval)
-    }
-  }, [simulator, arenaStatus, sharedState, spawnDroneShared])
 
   // ─── Crashes visuais aleatórios (apenas simulador básico) ───────────────────
   useEffect(() => {
@@ -337,7 +427,10 @@ export default function useDroneSimulation(executionId: string, simulator: strin
     setDisplayRate(0)
     setDisplayDiv(1)
     setSharedPhase(1)
-    setSharedState('receiving')
+    setDronesInA(20)
+    setDronesInB(20)
+    setQueueA(18) // demanda inicial em A visível desde o início
+    setQueueB(0)
     divisor.current = 1
     departsSeen.current = 0
     eventCounter.current = 0
@@ -432,6 +525,9 @@ export default function useDroneSimulation(executionId: string, simulator: strin
     displayRate,
     displayDiv,
     sharedPhase,
-    sharedState,
+    dronesInA,
+    dronesInB,
+    queueA,
+    queueB,
   }
 }
