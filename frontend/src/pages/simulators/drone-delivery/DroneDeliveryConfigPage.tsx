@@ -113,7 +113,7 @@ export default function DroneDeliveryConfigPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                Qtd de Configurações de Drones
+                                Quantidade de Configurações de Drones
                             </label>
                             <input
                                 type="number"
@@ -130,7 +130,7 @@ export default function DroneDeliveryConfigPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                ar.min
+                                Taxa de Chegada Mínima
                             </label>
                             <input
                                 type="number"
@@ -142,7 +142,7 @@ export default function DroneDeliveryConfigPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                ar.max
+                                Taxa de Chegada Máxima
                             </label>
                             <input
                                 type="number"
@@ -154,18 +154,7 @@ export default function DroneDeliveryConfigPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                xPointQuantity
-                            </label>
-                            <input
-                                type="number"
-                                {...register('xPointQuantity', intFieldOptions(20))}
-                                className="w-full rounded-md px-3 py-2 bg-(--color-surface) border border-(--color-border) focus:outline-none focus:border-(--color-cyan-primary)"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                maxQueueSize
+                                Tamanho Máximo de Fila
                             </label>
                             <input
                                 type="number"
@@ -176,7 +165,7 @@ export default function DroneDeliveryConfigPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                totalPackages
+                                Replicações por Simulação
                             </label>
                             <input
                                 type="number"
@@ -187,7 +176,7 @@ export default function DroneDeliveryConfigPage() {
 
                         <div>
                             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                                simulationNumber
+                                Quantidade de Simulações
                             </label>
                             <input
                                 type="number"
@@ -199,7 +188,7 @@ export default function DroneDeliveryConfigPage() {
 
                     <div>
                         <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
-                            Drones (configurações)
+                            Drones (Quantidade de Drones por Configuração)
                         </label>
 
                         <div className="space-y-2">

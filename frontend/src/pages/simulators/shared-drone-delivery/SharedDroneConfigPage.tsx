@@ -181,43 +181,35 @@ export default function SharedDroneConfigPage() {
                         <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Gerais</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                                <label className={labelClass} style={styleLabel}>queueCapacity</label>
+                                <label className={labelClass} style={styleLabel}>Tamanho da Fila</label>
                                 <input type="number" min={1} {...register('queueCapacity', intField(40))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>dronesPerWarehouse</label>
+                                <label className={labelClass} style={styleLabel}>Drones por Centro de Distribuição</label>
                                 <input type="number" min={1} {...register('dronesPerWarehouse', intField(20))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>meanServiceTime (minutos)</label>
+                                <label className={labelClass} style={styleLabel}>Tempo Médio de Serviço (minutos)</label>
                                 <input type="number" step="any" {...register('meanServiceTime', floatField(0.5))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>pickupTime (minutos)</label>
+                                <label className={labelClass} style={styleLabel}>Tempo de Coleta de Pacote (minutos)</label>
                                 <input type="number" step="any" {...register('pickupTime', floatField(2.0))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>flightTime (minutos)</label>
+                                <label className={labelClass} style={styleLabel}>Tempo de Vôo (minutos)</label>
                                 <input type="number" step="any" {...register('flightTime', floatField(75.0))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>transferTime (minutos)</label>
+                                <label className={labelClass} style={styleLabel}>Tempo de Transferência entre Galpões (minutos)</label>
                                 <input type="number" step="any" {...register('transferTime', floatField(2.5))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>phaseDuration (minutos)</label>
+                                <label className={labelClass} style={styleLabel}>Duração de Fase de Entrega por Galpão (minutos)</label>
                                 <input type="number" step="any" {...register('phaseDuration', floatField(500.0))} className={inputClass} />
                             </div>
                             <div>
-                                <label className={labelClass} style={styleLabel}>backlogThreshold</label>
-                                <input type="number" min={1} {...register('backlogThreshold', intField(10))} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass} style={styleLabel}>migrateBatch</label>
-                                <input type="number" min={1} {...register('migrateBatch', intField(3))} className={inputClass} />
-                            </div>
-                            <div>
-                                <label className={labelClass} style={styleLabel}>baseSeed</label>
+                                <label className={labelClass} style={styleLabel}>Semente Base</label>
                                 <input type="number" min={1} {...register('baseSeed', intField(42))} className={inputClass} />
                             </div>
                         </div>
@@ -231,24 +223,20 @@ export default function SharedDroneConfigPage() {
                             <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Transientes</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>simTime (minutos)</label>
+                                    <label className={labelClass} style={styleLabel}>Tempo de Simulação (minutos)</label>
                                     <input type="number" step="any" {...register('transientSimTime', floatField(6000.0))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>warmupTime (minutos)</label>
+                                    <label className={labelClass} style={styleLabel}>Tempo de Aquecimento da Simulação (minutos)</label>
                                     <input type="number" step="any" {...register('transientWarmupTime', floatField(0.0))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>meanInterarrival</label>
+                                    <label className={labelClass} style={styleLabel}>Tempo Médio Entre Chegada de Pacotes</label>
                                     <input type="number" step="any" {...register('transientMeanInterarrival', floatField(2.77))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>runs</label>
+                                    <label className={labelClass} style={styleLabel}>Quantidade de Simulações</label>
                                     <input type="number" min={1} {...register('transientRuns', intField(1))} className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass} style={styleLabel}>smaWindow</label>
-                                    <input type="number" min={1} {...register('transientSmaWindow', intField(3))} className={inputClass} />
                                 </div>
                             </div>
                         </div>
@@ -257,28 +245,24 @@ export default function SharedDroneConfigPage() {
                             <h3 className="text-lg font-bold mb-3" style={{ color: 'var(--color-text-primary)' }}>Parâmetros Estacionários</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>simTime (minutos)</label>
+                                    <label className={labelClass} style={styleLabel}>Tempo de Simulação (minutos)</label>
                                     <input type="number" step="any" {...register('stationarySimTime', floatField(50000.0))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>warmupTime (minutos)</label>
+                                    <label className={labelClass} style={styleLabel}>Tempo de Aquecimento da Simulação (minutos)</label>
                                     <input type="number" step="any" {...register('stationaryWarmupTime', floatField(10000.0))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>minAr</label>
+                                    <label className={labelClass} style={styleLabel}>Taxa de Chegada Mínima</label>
                                     <input type="number" step="any" {...register('stationaryMinAr', floatField(0.08))} className={inputClass} />
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>maxAr</label>
+                                    <label className={labelClass} style={styleLabel}>Taxa de Chegada Máxima</label>
                                     <input type="number" step="any" {...register('stationaryMaxAr', floatField(0.3831578947368421))} className={inputClass} />
                                     {errors.stationaryMaxAr && <p className="text-red-500 text-sm mt-1">{errors.stationaryMaxAr.message}</p>}
                                 </div>
                                 <div>
-                                    <label className={labelClass} style={styleLabel}>arStep</label>
-                                    <input type="number" step="any" {...register('stationaryArStep', floatField(0.03789473684210526))} className={inputClass} />
-                                </div>
-                                <div>
-                                    <label className={labelClass} style={styleLabel}>replicas</label>
+                                    <label className={labelClass} style={styleLabel}>Quantidade de Replicações</label>
                                     <input type="number" min={1} {...register('stationaryReplicas', intField(500))} className={inputClass} />
                                 </div>
                             </div>
