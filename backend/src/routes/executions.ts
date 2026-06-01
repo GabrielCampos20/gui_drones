@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from 'express'
 import { prisma } from '../lib/prisma'
-import { spawn, type ChildProcess } from 'child_process'
+import { spawn, exec, type ChildProcess } from 'child_process'
 import { EventEmitter } from 'events'
 import path from 'path'
 import fs from 'fs'
@@ -164,7 +164,15 @@ router.post('/:id/stop', async (req: Request, res: Response) => {
             return
         }
 
-        simState.currentProcess.kill('SIGTERM')
+        if (process.platform === 'win32' && simState.currentProcess.pid) {
+            exec(`taskkill /pid ${simState.currentProcess.pid} /f /t`, (err) => {
+                if (err) {
+                    console.error('Erro ao executar taskkill:', err)
+                }
+            })
+        } else {
+            simState.currentProcess.kill('SIGTERM')
+        }
         res.json({ message: 'Simulação abortada com sucesso.' })
     } catch (error) {
         console.error('Error stopping execution:', error)
