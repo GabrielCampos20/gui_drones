@@ -383,7 +383,7 @@ export default function useDroneSimulation(executionId: string, simulator: strin
     setDrones(prev => {
       const candidates = prev
         .map((d, i) => ({ d, i }))
-        .filter(({ d }) => d.status === 'flying')
+        .filter(({ d }) => d.status === 'flying' && d.phase === 'forward')
       if (candidates.length === 0) return prev
       const { i } = candidates[Math.floor(Math.random() * candidates.length)]
       const next = [...prev]
