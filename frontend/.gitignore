@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Vite temporary files
+vite.config.ts.timestamp-*
+
+# ESLint cache
+.eslintcache
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

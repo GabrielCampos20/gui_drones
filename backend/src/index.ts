@@ -3,7 +3,6 @@ import express from 'express'
 import cors from 'cors'
 import path from 'path'
 import fs from 'fs'
-import { spawn } from 'child_process'
 import authRouter from './routes/auth'
 import executionsRouter from './routes/executions'
 
