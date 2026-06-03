@@ -5,6 +5,7 @@ import PageShell from '../../components/ui/PageShell'
 import Modal from '../../components/ui/Modal'
 import BackLink from '../../components/ui/BackLink'
 import DangerButton from '../../components/ui/DangerButton'
+import { useLanguage } from '../../contexts/LanguageContext'
 import {
     executionsApi,
     simulatorLabel,
@@ -17,6 +18,7 @@ import {
 
 function StatusBadge({ status }: { status: 'running' | 'done' }) {
     const isRunning = status === 'running'
+    const { t } = useLanguage()
     return (
         <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
@@ -35,7 +37,7 @@ function StatusBadge({ status }: { status: 'running' | 'done' }) {
             ) : (
                 <CheckCircle size={11} />
             )}
-            {isRunning ? 'Em andamento' : 'Concluída'}
+            {isRunning ? t('status_active') : t('status_success')}
         </span>
     )
 }
@@ -43,6 +45,7 @@ function StatusBadge({ status }: { status: 'running' | 'done' }) {
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState() {
+    const { t } = useLanguage()
     return (
         <div
             className="flex flex-col items-center justify-center py-20 rounded-xl border"
@@ -50,17 +53,17 @@ function EmptyState() {
         >
             <PlayCircle size={48} style={{ color: 'var(--color-text-muted)' }} className="mb-4" />
             <p className="text-lg font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                Nenhuma execução encontrada
+                {t('history_empty')}
             </p>
             <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
-                Execute um simulador para ver o histórico aqui.
+                {t('history_empty_sub')}
             </p>
             <Link
                 to="/"
                 className="px-4 py-2 rounded-lg text-sm font-medium"
                 style={{ backgroundColor: 'var(--color-cyan-primary)', color: 'var(--color-background)' }}
             >
-                Ir para os simuladores
+                {t('voltar_simuladores')}
             </Link>
         </div>
     )
@@ -69,6 +72,7 @@ function EmptyState() {
 // ─── Offline state ────────────────────────────────────────────────────────────
 
 function OfflineState({ onRetry }: { onRetry: () => void }) {
+    const { t } = useLanguage()
     return (
         <div
             className="flex flex-col items-center justify-center py-20 rounded-xl border"
@@ -76,10 +80,10 @@ function OfflineState({ onRetry }: { onRetry: () => void }) {
         >
             <AlertCircle size={48} style={{ color: 'var(--color-warning)' }} className="mb-4" />
             <p className="text-lg font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
-                Backend indisponível
+                {t('backend_offline')}
             </p>
             <p className="text-sm mb-6" style={{ color: 'var(--color-text-muted)' }}>
-                Não foi possível conectar ao servidor. Verifique se o backend está rodando.
+                {t('backend_offline_desc')}
             </p>
             <button
                 onClick={onRetry}
@@ -92,7 +96,7 @@ function OfflineState({ onRetry }: { onRetry: () => void }) {
                 }}
             >
                 <RefreshCw size={14} />
-                Tentar novamente
+                {t('retry')}
             </button>
         </div>
     )
@@ -104,6 +108,7 @@ export default function HistoryPage() {
     const [executions, setExecutions] = useState<Execution[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isOffline, setIsOffline] = useState(false)
+    const { t, language } = useLanguage()
     
     // Modal states
     const [isClearing, setIsClearing] = useState(false)
@@ -161,8 +166,8 @@ export default function HistoryPage() {
 
     return (
         <PageShell
-            title="Histórico de Execuções"
-            description="Acompanhe todas as simulações realizadas."
+            title={t('history_title')}
+            description={t('history_desc')}
         >
             {/* Header actions */}
             <div className="flex items-center justify-between mb-6">
@@ -170,7 +175,7 @@ export default function HistoryPage() {
 
                 <div className="flex items-center gap-3">
                     <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                        {!isLoading && !isOffline && `${executions.length} execução(ões) encontrada(s)`}
+                        {!isLoading && !isOffline && `${executions.length} ${t('executions_found')}`}
                     </p>
                     
                     {!isLoading && !isOffline && executions.length > 0 && (
@@ -178,10 +183,10 @@ export default function HistoryPage() {
                             onClick={confirmClearAll}
                             disabled={isClearing || isLoading}
                             isLoading={isClearing}
-                            loadingLabel="Limpando..."
+                            loadingLabel={t('clearing')}
                         >
                             <Trash2 size={13} />
-                            Limpar
+                            {t('clear')}
                         </DangerButton>
                     )}
 
@@ -198,7 +203,7 @@ export default function HistoryPage() {
                         }}
                     >
                         <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
-                        Atualizar
+                        {t('refresh')}
                     </button>
                 </div>
             </div>
@@ -237,11 +242,11 @@ export default function HistoryPage() {
                             borderBottom: '1px solid var(--color-border)',
                         }}
                     >
-                        <span>Simulador</span>
-                        <span>Iniciada em</span>
-                        <span>Duração</span>
-                        <span>Status</span>
-                        <span className="text-right">Ações</span>
+                        <span>{t('table_sim')}</span>
+                        <span>{t('table_date')}</span>
+                        <span>{t('table_duration')}</span>
+                        <span>{t('table_status')}</span>
+                        <span className="text-right">{t('table_actions')}</span>
                     </div>
 
                     {/* Rows */}
@@ -268,7 +273,7 @@ export default function HistoryPage() {
                             {/* Started at */}
                             <span className="flex items-center gap-1.5 text-sm" style={{ color: 'var(--color-text-muted)' }}>
                                 <Clock size={12} />
-                                {new Date(exec.startedAt).toLocaleString('pt-BR', {
+                                {new Date(exec.startedAt).toLocaleString(language === 'pt' ? 'pt-BR' : 'en-US', {
                                     day: '2-digit', month: '2-digit', year: '2-digit',
                                     hour: '2-digit', minute: '2-digit',
                                 })}
@@ -295,7 +300,7 @@ export default function HistoryPage() {
                                         e.currentTarget.style.color = 'var(--color-cyan-light)'
                                     }}
                                 >
-                                    Ver detalhes →
+                                    {t('view_details')} →
                                 </Link>
                             </div>
                         </div>
@@ -306,11 +311,11 @@ export default function HistoryPage() {
             {/* Modal de Limpar Histórico */}
             <Modal
                 isOpen={isClearModalOpen}
-                title="Limpar Histórico"
-                description="Tem certeza que deseja excluir todo o histórico de execuções? Esta ação não pode ser desfeita e todas as simulações e arquivos relacionados serão perdidos."
+                title={t('confirm_clear_title')}
+                description={t('confirm_clear_desc')}
                 variant="danger"
-                confirmText="Sim, excluir tudo"
-                cancelText="Não, cancelar"
+                confirmText={t('confirm')}
+                cancelText={t('cancel')}
                 onConfirm={executeClearAll}
                 onCancel={() => setIsClearModalOpen(false)}
                 isLoading={isClearing}
@@ -319,8 +324,8 @@ export default function HistoryPage() {
             {/* Modal de Erro */}
             <Modal
                 isOpen={isErrorModalOpen}
-                title="Erro ao limpar"
-                description="Não foi possível se comunicar com o banco de dados para limpar o histórico. Verifique a conexão do servidor."
+                title={t('error_clear_title')}
+                description={t('error_clear')}
                 variant="info"
                 confirmText="OK"
                 onConfirm={() => setIsErrorModalOpen(false)}

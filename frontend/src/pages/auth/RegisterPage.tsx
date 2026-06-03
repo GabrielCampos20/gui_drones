@@ -4,25 +4,31 @@ import * as z from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { toast } from 'sonner'
 
-const RegisterSchema = z
-    .object({
-        name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-        password: z.string().min(6, 'Senha deve ter ao menos 6 caracteres'),
-        confirmPassword: z.string().min(1, 'Confirme sua senha'),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-        message: 'As senhas não coincidem',
-        path: ['confirmPassword'],
-    })
-
-type RegisterFormValues = z.infer<typeof RegisterSchema>
+type RegisterFormValues = {
+    name: string
+    password: string
+    confirmPassword: string
+}
 
 export default function RegisterPage() {
     const { register: registerUser } = useAuth()
+    const { t, language } = useLanguage()
     const navigate = useNavigate()
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const RegisterSchema = z
+        .object({
+            name: z.string().min(2, t('invalid_data')),
+            password: z.string().min(6, t('invalid_data')),
+            confirmPassword: z.string().min(1, t('invalid_data')),
+        })
+        .refine((data) => data.password === data.confirmPassword, {
+            message: language === 'en' ? 'Passwords do not match' : 'As senhas não coincidem',
+            path: ['confirmPassword'],
+        })
 
     const {
         register,
@@ -34,12 +40,12 @@ export default function RegisterPage() {
         setIsSubmitting(true)
         try {
             await registerUser(data.name, data.password)
-            toast.success('Conta criada! Bem-vindo.')
+            toast.success(language === 'en' ? 'Account created! Welcome.' : 'Conta criada! Bem-vindo.')
             navigate('/', { replace: true })
         } catch (err: unknown) {
-            const message =
-                err instanceof Error ? err.message : 'Erro ao criar conta. Tente novamente.'
-            toast.error(message)
+            const message = err instanceof Error ? err.message : ''
+            const isUserTaken = message.includes('already in use') || message.includes('já está em uso') || message.includes('409')
+            toast.error(isUserTaken ? t('user_taken') : t('register_error'))
         } finally {
             setIsSubmitting(false)
         }
@@ -86,10 +92,10 @@ export default function RegisterPage() {
                         className="text-3xl font-bold tracking-tight"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        Criar conta
+                        {t('register_title')}
                     </h1>
                     <p className="mt-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                        Preencha os dados abaixo para se cadastrar
+                        {t('register_subtitle')}
                     </p>
                 </div>
 
@@ -106,13 +112,13 @@ export default function RegisterPage() {
                                 className="block text-sm font-medium mb-1.5"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                Nome de usuário
+                                {t('username')}
                             </label>
                             <input
                                 id="register-name"
                                 type="text"
                                 autoComplete="username"
-                                placeholder="Seu nome"
+                                placeholder={t('username')}
                                 {...register('name')}
                                 className="w-full rounded-lg px-3.5 py-2.5 text-sm"
                                 style={inputStyle(!!errors.name)}
@@ -133,13 +139,13 @@ export default function RegisterPage() {
                                 className="block text-sm font-medium mb-1.5"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                Senha
+                                {t('password')}
                             </label>
                             <input
                                 id="register-password"
                                 type="password"
                                 autoComplete="new-password"
-                                placeholder="Mín. 6 caracteres"
+                                placeholder={language === 'en' ? 'Min. 6 characters' : 'Mín. 6 caracteres'}
                                 {...register('password')}
                                 className="w-full rounded-lg px-3.5 py-2.5 text-sm"
                                 style={inputStyle(!!errors.password)}
@@ -160,13 +166,13 @@ export default function RegisterPage() {
                                 className="block text-sm font-medium mb-1.5"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                Confirmar senha
+                                {language === 'en' ? 'Confirm password' : 'Confirmar senha'}
                             </label>
                             <input
                                 id="register-confirm-password"
                                 type="password"
                                 autoComplete="new-password"
-                                placeholder="Repita a senha"
+                                placeholder={language === 'en' ? 'Repeat password' : 'Repita a senha'}
                                 {...register('confirmPassword')}
                                 className="w-full rounded-lg px-3.5 py-2.5 text-sm"
                                 style={inputStyle(!!errors.confirmPassword)}
@@ -185,7 +191,7 @@ export default function RegisterPage() {
                             id="register-submit"
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity mt-2"
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity mt-2 cursor-pointer"
                             style={{
                                 backgroundColor: 'var(--color-cyan-primary)',
                                 color: 'var(--color-background)',
@@ -193,19 +199,21 @@ export default function RegisterPage() {
                                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                             }}
                         >
-                            {isSubmitting ? 'Criando conta…' : 'Criar conta'}
+                            {isSubmitting ? t('loading') : t('register_button')}
                         </button>
                     </form>
 
                     {/* Divider */}
                     <div className="flex items-center gap-3 my-6">
                         <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
-                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>ou</span>
+                        <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                            {language === 'en' ? 'or' : 'ou'}
+                        </span>
                         <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
                     </div>
 
                     <p className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                        Já tem uma conta?{' '}
+                        {t('already_member')}{' '}
                         <Link
                             to="/login"
                             id="goto-login"
@@ -214,7 +222,7 @@ export default function RegisterPage() {
                             onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-cyan-primary)')}
                             onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-cyan-light)')}
                         >
-                            Entrar
+                            {t('enter')}
                         </Link>
                     </p>
                 </div>

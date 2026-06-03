@@ -7,7 +7,6 @@ import {
     Tooltip,
     Legend,
     ResponsiveContainer,
-    CartesianGrid
 } from 'recharts'
 import html2canvas from 'html2canvas'
 import { Download } from 'lucide-react'

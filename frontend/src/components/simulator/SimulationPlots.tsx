@@ -78,7 +78,9 @@ export default function SimulationPlots({ execution }: SimulationPlotsProps) {
                                 dataMap.set(ar, { AR: ar })
                             }
                             const entry = dataMap.get(ar)
-                            entry[lineKey] = mean
+                            if (entry) {
+                                entry[lineKey] = mean
+                            }
                         }
 
                         const sortedData = Array.from(dataMap.values()).sort((a: any, b: any) => a.AR - b.AR)

@@ -1,24 +1,25 @@
 import PageShell from '../../components/ui/PageShell'
 import SimulatorCard from '../../components/ui/SimulatorCard'
-
-const simulators = [
-    {
-        title: 'Drone Delivery Sim',
-        description:
-            'A straightforward drone delivery simulator where drones transport packages between designated points. Perfect for learning the basics of autonomous delivery systems.',
-        route: '/simuladores/drone-delivery/configuracao',
-    },
-    {
-        title: 'Shared Drone Delivery Sim',
-        description:
-            'An advanced simulator featuring shared drones across multiple warehouses. Optimize delivery routes and resource allocation in a complex logistics network.',
-        route: '/simuladores/shared-drone-delivery/configuracao',
-    },
-]
+import { useLanguage } from '../../contexts/LanguageContext'
 
 export default function HomePage() {
+    const { t } = useLanguage()
+
+    const simulators = [
+        {
+            title: t('drone_delivery_title'),
+            description: t('drone_delivery_desc'),
+            route: '/simuladores/drone-delivery/configuracao',
+        },
+        {
+            title: t('shared_drone_title'),
+            description: t('shared_drone_desc'),
+            route: '/simuladores/shared-drone-delivery/configuracao',
+        },
+    ]
+
     return (
-        <PageShell title="Simulador de Drones" description="Escolha um simulador para acessar sua configuração específica.">
+        <PageShell title={t('home_title')} description={t('home_subtitle')}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {simulators.map((simulator) => (
                     <SimulatorCard

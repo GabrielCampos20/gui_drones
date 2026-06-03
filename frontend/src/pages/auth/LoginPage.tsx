@@ -4,19 +4,24 @@ import * as z from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useLanguage } from '../../contexts/LanguageContext'
 import { toast } from 'sonner'
 
-const LoginSchema = z.object({
-    name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-    password: z.string().min(1, 'Senha obrigatória'),
-})
-
-type LoginFormValues = z.infer<typeof LoginSchema>
+type LoginFormValues = {
+    name: string
+    password: string
+}
 
 export default function LoginPage() {
     const { login } = useAuth()
+    const { t, language } = useLanguage()
     const navigate = useNavigate()
     const [isSubmitting, setIsSubmitting] = useState(false)
+
+    const LoginSchema = z.object({
+        name: z.string().min(2, t('invalid_data')),
+        password: z.string().min(1, t('invalid_data')),
+    })
 
     const {
         register,
@@ -30,7 +35,7 @@ export default function LoginPage() {
             await login(data.name, data.password)
             navigate('/', { replace: true })
         } catch {
-            toast.error('Nome de usuário ou senha inválidos.')
+            toast.error(t('login_error'))
         } finally {
             setIsSubmitting(false)
         }
@@ -62,10 +67,10 @@ export default function LoginPage() {
                         className="text-3xl font-bold tracking-tight"
                         style={{ color: 'var(--color-text-primary)' }}
                     >
-                        Bem-vindo de volta
+                        {t('login_title')}
                     </h1>
                     <p className="mt-2 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                        Acesse sua conta para continuar
+                        {t('login_subtitle')}
                     </p>
                 </div>
 
@@ -85,13 +90,13 @@ export default function LoginPage() {
                                 className="block text-sm font-medium mb-1.5"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                Nome de usuário
+                                {t('username')}
                             </label>
                             <input
                                 id="login-name"
                                 type="text"
                                 autoComplete="username"
-                                placeholder="Seu nome"
+                                placeholder={t('username')}
                                 {...register('name')}
                                 className="w-full rounded-lg px-3.5 py-2.5 text-sm transition-colors"
                                 style={{
@@ -123,7 +128,7 @@ export default function LoginPage() {
                                 className="block text-sm font-medium mb-1.5"
                                 style={{ color: 'var(--color-text-secondary)' }}
                             >
-                                Senha
+                                {t('password')}
                             </label>
                             <input
                                 id="login-password"
@@ -159,7 +164,7 @@ export default function LoginPage() {
                             id="login-submit"
                             type="submit"
                             disabled={isSubmitting}
-                            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity mt-2"
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity mt-2 cursor-pointer"
                             style={{
                                 backgroundColor: 'var(--color-cyan-primary)',
                                 color: 'var(--color-background)',
@@ -167,7 +172,7 @@ export default function LoginPage() {
                                 cursor: isSubmitting ? 'not-allowed' : 'pointer',
                             }}
                         >
-                            {isSubmitting ? 'Entrando…' : 'Entrar'}
+                            {isSubmitting ? t('loading') : t('enter')}
                         </button>
                     </form>
 
@@ -175,13 +180,13 @@ export default function LoginPage() {
                     <div className="flex items-center gap-3 my-6">
                         <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
                         <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
-                            ou
+                            {language === 'en' ? 'or' : 'ou'}
                         </span>
                         <div className="flex-1 h-px" style={{ backgroundColor: 'var(--color-border)' }} />
                     </div>
 
                     <p className="text-center text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                        Não tem uma conta?{' '}
+                        {t('no_account')}{' '}
                         <Link
                             to="/cadastro"
                             id="goto-register"
@@ -194,7 +199,7 @@ export default function LoginPage() {
                                 (e.currentTarget.style.color = 'var(--color-cyan-light)')
                             }
                         >
-                            Cadastre-se
+                            {t('register_here')}
                         </Link>
                     </p>
                 </div>

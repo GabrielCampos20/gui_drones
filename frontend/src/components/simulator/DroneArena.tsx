@@ -13,7 +13,6 @@ export default function DroneArena({ executionId, simulator = 'drone-delivery' }
   const {
     drones,
     arenaStatus,
-    deliveries,
     displayDiv,
     sharedPhase,
     dronesInA,

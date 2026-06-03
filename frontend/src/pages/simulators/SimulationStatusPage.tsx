@@ -8,6 +8,7 @@ import SimulationPlots from '../../components/simulator/SimulationPlots'
 import SharedSimulationPlots from '../../components/simulator/SharedSimulationPlots'
 import BackLink from '../../components/ui/BackLink'
 import DangerButton from '../../components/ui/DangerButton'
+import { useLanguage } from '../../contexts/LanguageContext'
 import {
     executionsApi,
     simulatorLabel,
@@ -33,6 +34,16 @@ function Spinner() {
 
 function ResultFile({ label, path }: { label: string; path: string | null }) {
     if (!path) return null
+    const { t } = useLanguage()
+    let translatedLabel = label
+    if (label === 'Log') translatedLabel = t('log_file')
+    else if (label === 'Tempo de fila' || label === 'Queue Time') translatedLabel = t('queue_time_plot')
+    else if (label === 'Tempo de missão' || label === 'Mission Time') translatedLabel = t('mission_time_plot')
+    else if (label === 'Tempo de voo' || label === 'Flight Time') translatedLabel = t('flight_time_plot')
+    else if (label === 'Prob. de queda' || label === 'Drop Probability') translatedLabel = t('drop_prob_plot')
+    else if (label === 'MMT vs Arrival Rate') translatedLabel = t('shared_mmt_ar')
+    else if (label === 'MMT vs Time') translatedLabel = t('shared_mmt_time')
+
     const filename = path.split('/').pop() ?? path
     return (
         <a
@@ -55,7 +66,7 @@ function ResultFile({ label, path }: { label: string; path: string | null }) {
             <FileText size={14} />
             <span>
                 <span className="font-medium" style={{ color: 'var(--color-text-secondary)' }}>
-                    {label}:{' '}
+                    {translatedLabel}:{' '}
                 </span>
                 {filename}
             </span>
@@ -76,6 +87,7 @@ export default function SimulationStatusPage() {
     const [isErrorModalOpen, setIsErrorModalOpen] = useState(false)
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const { t } = useLanguage()
 
     // Contador de tempo decorrido
     useEffect(() => {
@@ -101,7 +113,7 @@ export default function SimulationStatusPage() {
                     if (timerRef.current) clearInterval(timerRef.current)
                 }
             } catch {
-                setError('Não foi possível conectar ao backend. Aguardando...')
+                setError(t('status_connecting_desc'))
             }
         }
 
@@ -111,7 +123,7 @@ export default function SimulationStatusPage() {
         return () => {
             if (intervalRef.current) clearInterval(intervalRef.current)
         }
-    }, [id])
+    }, [id, t])
 
     const handleStop = async () => {
         if (!id) return
@@ -138,12 +150,12 @@ export default function SimulationStatusPage() {
     // ─── Título dinâmico (item 5) ───────────────────────────────────────────────
 
     const simulatorName = execution ? simulatorLabel(execution.simulator) : 'Simulador'
-    const pageTitle = isDone ? 'Simulação concluída' : 'Execução em andamento'
+    const pageTitle = isDone ? t('status_done') : t('status_running')
 
     return (
         <PageShell
             title={pageTitle}
-            description={`${simulatorName} — acompanhe o progresso da simulação.`}
+            description={`${simulatorName} — ${t('status_desc')}`}
         >
             {/* Live 2D Arena */}
             <div className="max-w-2xl mx-auto">
@@ -163,10 +175,10 @@ export default function SimulationStatusPage() {
                             style={{ color: 'var(--color-success)' }}
                         />
                         <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-                            Simulação concluída!
+                            {t('status_done')}
                         </h2>
                         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            Duração total:{' '}
+                            {t('table_duration')}:{' '}
                             <span style={{ color: 'var(--color-text-secondary)' }}>
                                 {formatDuration(execution!.startedAt, execution!.finishedAt)}
                             </span>
@@ -181,10 +193,10 @@ export default function SimulationStatusPage() {
                             <Spinner />
                         </div>
                         <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-                            {error ? 'Conectando...' : 'Simulação em andamento'}
+                            {error ? t('status_connecting') : t('status_running')}
                         </h2>
                         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            {error ?? 'Aguarde enquanto o simulador processa os dados.'}
+                            {error ?? t('status_running_desc')}
                         </p>
                         <div
                             className="inline-flex items-center gap-2 mt-4 px-3 py-1.5 rounded-full text-sm"
@@ -195,7 +207,7 @@ export default function SimulationStatusPage() {
                             }}
                         >
                             <Clock size={13} />
-                            {Math.floor(simulationElapsedSec / 60)}:{String(simulationElapsedSec % 60).padStart(2, '0')} decorrido
+                            {Math.floor(simulationElapsedSec / 60)}:{String(simulationElapsedSec % 60).padStart(2, '0')} {t('elapsed')}
                         </div>
                     </div>
                 )}
@@ -209,10 +221,10 @@ export default function SimulationStatusPage() {
                             style={{ color: 'var(--color-warning)' }}
                         />
                         <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>
-                            Tempo excedido
+                            {t('status_timeout')}
                         </h2>
                         <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                            A simulação está demorando mais do que o esperado. Verifique os logs do backend.
+                            {t('status_timeout_desc')}
                         </p>
                     </div>
                 )}
@@ -224,7 +236,7 @@ export default function SimulationStatusPage() {
                         style={{ backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
                     >
                         <p className="text-xs mb-0.5 font-medium" style={{ color: 'var(--color-text-muted)' }}>
-                            ID da execução
+                            {t('exec_id')}
                         </p>
                         <p className="text-sm font-mono" style={{ color: 'var(--color-cyan-light)' }}>
                             {id}
@@ -236,14 +248,14 @@ export default function SimulationStatusPage() {
                 {isDone && execution && (
                     <div className="mb-6">
                         <p className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                            Arquivos gerados
+                            {t('files_generated')}
                         </p>
                         <div className="space-y-2">
                             {execution.simulator === 'shared-drone-delivery' ? (
                                 <>
                                     <ResultFile label="Log" path={execution.logPath} />
-                                    <ResultFile label="MMT vs Arrival Rate" path={execution.sharedMmtVsArCsvPath} />
-                                    <ResultFile label="MMT vs Time" path={execution.sharedMmtVsTimeCsvPath} />
+                                    <ResultFile label="MMT vs Arrival Rate" path={execution.sharedMmtVsArCsvPath ?? null} />
+                                    <ResultFile label="MMT vs Time" path={execution.sharedMmtVsTimeCsvPath ?? null} />
                                 </>
                             ) : (
                                 <>
@@ -260,7 +272,7 @@ export default function SimulationStatusPage() {
                             !execution.sharedMmtVsArCsvPath &&
                             !execution.sharedMmtVsTimeCsvPath && (
                                 <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                                    Nenhum arquivo disponível.
+                                    {t('no_files')}
                                 </p>
                             )
                         ) : (
@@ -268,7 +280,7 @@ export default function SimulationStatusPage() {
                             !execution.queueTimeCsvPath &&
                             !execution.missionTimeCsvPath && (
                                 <p className="text-sm" style={{ color: 'var(--color-text-muted)' }}>
-                                    Nenhum arquivo disponível.
+                                    {t('no_files')}
                                 </p>
                             )
                         )}
@@ -279,7 +291,7 @@ export default function SimulationStatusPage() {
                 {execution?.propertiesContent && (
                     <div className="mb-6">
                         <p className="text-sm font-semibold mb-3" style={{ color: 'var(--color-text-secondary)' }}>
-                            Parâmetros
+                            {t('params_used')}
                         </p>
                         <pre
                             className="text-xs p-4 rounded-lg overflow-x-auto"
@@ -307,7 +319,7 @@ export default function SimulationStatusPage() {
 
                 {/* Ações */}
                 <div className="flex items-center justify-between pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
-                    <BackLink to="/historico" label="Ver histórico" />
+                    <BackLink to="/historico" label={t('view_history')} />
 
                     {isDone ? (
                         <Link
@@ -318,17 +330,17 @@ export default function SimulationStatusPage() {
                                 color: 'var(--color-background)',
                             }}
                         >
-                            Nova simulação
+                            {t('new_sim')}
                         </Link>
                     ) : (
                         <DangerButton
                             onClick={handleStop}
                             disabled={isStopping}
                             isLoading={isStopping}
-                            loadingLabel="Parando..."
+                            loadingLabel={t('stopping')}
                             className="px-4 py-2 font-medium"
                         >
-                            Parar Simulação
+                            {t('stop_sim')}
                         </DangerButton>
                     )}
                 </div>
@@ -337,8 +349,8 @@ export default function SimulationStatusPage() {
             {/* Modal de Erro */}
             <Modal
                 isOpen={isErrorModalOpen}
-                title="Erro ao cancelar"
-                description="Não foi possível se comunicar com o banco de dados para parar a simulação. Verifique a conexão do servidor."
+                title={t('error_stop_title')}
+                description={t('error_stop_desc')}
                 variant="info"
                 confirmText="OK"
                 onConfirm={() => setIsErrorModalOpen(false)}
