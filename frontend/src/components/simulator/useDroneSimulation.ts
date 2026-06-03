@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { API_URL } from '../../lib/api'
+import { useAuth } from '../../contexts/AuthContext'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 export const LANES        = 4
@@ -77,6 +78,7 @@ const nextUid = () => _uid++
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 export default function useDroneSimulation(executionId: string, simulator: string = 'drone-delivery') {
+  const { token } = useAuth()
   const [drones, setDrones] = useState<VisualDrone[]>([])
   const [arenaStatus, setArenaStatus] = useState<ArenaStatus>('idle')
   const [deliveries, setDeliveries] = useState(0)
@@ -447,7 +449,14 @@ export default function useDroneSimulation(executionId: string, simulator: strin
 
       ; (async () => {
         try {
-          const res = await fetch(`${API_URL}/execucoes/stream`, { signal: ctrl.signal })
+          const headers: Record<string, string> = {}
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`
+          }
+          const res = await fetch(`${API_URL}/execucoes/stream`, {
+            headers,
+            signal: ctrl.signal,
+          })
           if (!res.ok || !res.body) { setArenaStatus('error'); return }
 
           const reader = res.body.getReader()

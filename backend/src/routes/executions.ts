@@ -4,8 +4,11 @@ import { spawn, type ChildProcess } from 'child_process'
 import { EventEmitter } from 'events'
 import path from 'path'
 import fs from 'fs'
+import { authMiddleware, type AuthenticatedRequest } from '../middleware/auth'
 
 const router = Router()
+
+router.use(authMiddleware)
 
 function getSimsBaseDir() {
     // 1. Verifica se está rodando dentro do Docker (onde o volume é montado em /app/sims)
@@ -132,6 +135,9 @@ router.get('/dropped-packages', (req: Request, res: Response) => {
 router.get('/', async (req: Request, res: Response) => {
     try {
         const executions = await prisma.execution.findMany({
+            where: {
+                userId: (req as AuthenticatedRequest).user?.id,
+            },
             orderBy: {
                 startedAt: 'desc',
             },
@@ -146,7 +152,11 @@ router.get('/', async (req: Request, res: Response) => {
 // ─── DELETE /execucoes ───────────────────────────────────────────────────────
 router.delete('/', async (req: Request, res: Response) => {
     try {
-        await prisma.execution.deleteMany()
+        await prisma.execution.deleteMany({
+            where: {
+                userId: (req as AuthenticatedRequest).user?.id,
+            },
+        })
         res.status(204).send()
     } catch (error) {
         console.error('Error deleting executions:', error)
@@ -158,6 +168,16 @@ router.delete('/', async (req: Request, res: Response) => {
 router.post('/:id/stop', async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string
+        const userId = (req as AuthenticatedRequest).user?.id
+
+        const execution = await prisma.execution.findFirst({
+            where: { id, userId },
+        })
+
+        if (!execution) {
+            res.status(404).json({ error: 'Execução não encontrada ou você não tem permissão para pará-la.' })
+            return
+        }
 
         if (!simState.isRunning || !simState.currentProcess) {
             res.status(400).json({ error: 'Não há simulação rodando no momento para ser parada.' })
@@ -207,6 +227,7 @@ router.post('/', async (req: Request, res: Response) => {
         const executionData: any = {
             simulator,
             propertiesContent,
+            userId: (req as AuthenticatedRequest).user?.id,
         }
 
         if (simulator === 'drone-delivery') {
@@ -305,12 +326,15 @@ router.post('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string
-        const execution = await prisma.execution.findUnique({
-            where: { id },
+        const execution = await prisma.execution.findFirst({
+            where: { 
+                id,
+                userId: (req as AuthenticatedRequest).user?.id,
+            },
         })
 
         if (!execution) {
-            res.status(404).json({ error: 'Execução não encontrada.' })
+            res.status(404).json({ error: 'Execução não encontrada ou você não tem permissão para acessá-la.' })
             return
         }
 
